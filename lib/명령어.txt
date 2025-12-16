@@ -1,0 +1,20 @@
+flutter clean
+flutter pub get
+flutter run -d windows
+
+
+echo "# payroll" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/Durantax/payroll.git
+git push -u origin main
+
+git add .gitignore
+git commit -m "add gitignore"
+git push
+
+git add .
+git commit -m "add flutter project"
+git push
