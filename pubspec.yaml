@@ -11,27 +11,39 @@ dependencies:
     sdk: flutter
 
   # =========================
+  # 상태 관리 (필수)
+  # =========================
+  provider: ^6.1.1
+
+  # =========================
+  # 데이터베이스 (SQLite)
+  # =========================
+  sqflite: ^2.3.0
+  sqflite_common_ffi: ^2.3.0  # 윈도우/맥 데스크톱용
+  path: ^1.8.3
+
+  # =========================
   # 기본 유틸 / 데이터 처리
   # =========================
   intl: ^0.19.0
   excel: ^4.0.6
   csv: ^6.0.0
-  file_picker: ^6.2.1
-  path_provider: ^2.1.5
+  file_picker: ^6.1.1
+  path_provider: ^2.1.2
 
   # =========================
   # PDF / 출력
   # =========================
-  pdf: ^3.11.3
-  printing: ^5.14.2
+  pdf: ^3.10.4
+  printing: ^5.11.0
 
   # =========================
   # 메일 발송
   # =========================
-  mailer: ^6.6.0
+  mailer: ^6.0.0
 
   # =========================
-  # Windows Desktop UI
+  # Desktop UI
   # =========================
   desktop_drop: ^0.7.0
   dotted_border: ^2.1.0
@@ -39,9 +51,10 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true
   assets:
+    # 프로젝트 루트에 assets/fonts 폴더를 만들고 폰트 파일을 넣어주세요.
     - assets/fonts/NanumGothic.ttf
