@@ -6,7 +6,6 @@ import 'package:excel/excel.dart' hide Border;
 import 'package:csv/csv.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:archive/archive.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 
@@ -242,15 +241,13 @@ class FileEmailService {
       result: result,
       year: year,
       month: month,
+      password: result.birthDate, // PDF 암호화에 생년월일 사용
     );
-
-    // ZIP 암호화 (생년월일)
-    final encryptedBytes = _encryptPdf(pdfBytes, result.birthDate);
 
     final directory = await getApplicationDocumentsDirectory();
     final fileName = '${client.name}_${result.workerName}_${year}년${month}월_급여명세서.pdf';
     final file = File('${directory.path}/$fileName');
-    await file.writeAsBytes(encryptedBytes);
+    await file.writeAsBytes(pdfBytes);
 
     // Windows 기본 뷰어로 열기
     if (Platform.isWindows) {
@@ -265,6 +262,7 @@ class FileEmailService {
     required SalaryResult result,
     required int year,
     required int month,
+    String? password, // 암호화용 비밀번호 (생년월일)
   }) async {
     final pdf = pw.Document();
 
@@ -337,7 +335,17 @@ class FileEmailService {
       ),
     );
 
-    return pdf.save();
+    // PDF 저장 (암호화 포함)
+    if (password != null && password.isNotEmpty) {
+      return pdf.save(
+        pdfSecurity: PdfSecurity.encrypted(
+          userPassword: password,
+          ownerPassword: password,
+        ),
+      );
+    } else {
+      return pdf.save();
+    }
   }
 
   static pw.Widget _buildPaymentTable(SalaryResult result, pw.Font font) {
@@ -448,16 +456,6 @@ class FileEmailService {
   static String _formatAmount(int amount) {
     return '${formatMoney(amount)}원';
   }
-
-    static Uint8List _encryptPdf(Uint8List pdfBytes, String password) {
-    // archive 패키지의 ZipEncoder는 password 파라미터를 지원하지 않음
-    // 대신 일반 ZIP으로 저장 (비밀번호는 이메일/안내문에 표시)
-    final archive = Archive();
-    archive.addFile(ArchiveFile('payslip.pdf', pdfBytes.length, pdfBytes));
-    final zipBytes = ZipEncoder().encode(archive);
-    return Uint8List.fromList(zipBytes!);
-    }
-
 
   // ========== 이메일 발송 ==========
 
