@@ -577,16 +577,29 @@ class AppProvider with ChangeNotifier {
             clientId: _selectedClient!.id,
             name: data['name'] as String,
             birthDate: data['birthDate'] as String,
+            phoneNumber: '',
             employmentType: 'regular',
             salaryType: (data['hourlyRate'] as int) > 0 ? 'hourly' : 'monthly',
             monthlySalary: data['monthlySalary'] as int,
             hourlyRate: data['hourlyRate'] as int,
             normalHours: data['normalHours'] as double,
+            foodAllowance: 0,
+            carAllowance: 0,
+            hasNationalPension: true,
+            hasHealthInsurance: true,
+            hasEmploymentInsurance: true,
+            healthInsuranceBasis: 'salary',
+            useEmail: false,
           );
 
           // 서버에 저장하고 ID 받기
-          final savedWorker = await saveWorker(newWorker);
-          workerId = savedWorker.id!;
+          try {
+            final savedWorker = await saveWorker(newWorker);
+            workerId = savedWorker.id!;
+          } catch (e) {
+            _setError('직원 저장 실패 (${data['name']}): $e\n생년월일: ${data['birthDate']}');
+            continue; // 다음 직원 처리
+          }
         } else {
           workerId = existingWorker.id!;
         }

@@ -87,7 +87,18 @@ class ApiService {
     if (response.statusCode == 200) {
       return WorkerModel.fromJson(json.decode(utf8.decode(response.bodyBytes)));
     } else {
-      throw Exception('직원 저장 실패: ${response.statusCode}');
+      // 서버 응답 메시지 포함
+      String errorMsg = '직원 저장 실패: ${response.statusCode}';
+      try {
+        final errorBody = json.decode(utf8.decode(response.bodyBytes));
+        if (errorBody['detail'] != null) {
+          errorMsg += ' - ${errorBody['detail']}';
+        }
+      } catch (e) {
+        // JSON 파싱 실패 시 원본 응답 포함
+        errorMsg += ' - ${response.body}';
+      }
+      throw Exception(errorMsg);
     }
   }
 
