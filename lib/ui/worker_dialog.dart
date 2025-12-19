@@ -232,8 +232,8 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
             value: _employmentType,
             decoration: const InputDecoration(labelText: '* 구분', border: OutlineInputBorder()),
             items: const [
-              DropdownMenuItem(value: 'regular', child: Text('정규직')),
-              DropdownMenuItem(value: 'freelance', child: Text('프리랜서(3.3%)')),
+              DropdownMenuItem(value: 'regular', child: Text('근로소득')),
+              DropdownMenuItem(value: 'freelance', child: Text('사업소득(3.3%)')),
             ],
             onChanged: (value) {
               setState(() {
@@ -481,13 +481,13 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
 
   Widget _buildInsuranceTab(bool isFreelancer) {
     if (isFreelancer) {
-      return const Center(
-        Card(
+      return Center(
+        child: Card(
         color: Colors.orange[50],  // ✅
         child: const Padding(
             padding: EdgeInsets.all(24),
             child: Text(
-            '프리랜서(3.3%)는 4대보험이 적용되지 않습니다.',
+            '사업소득(3.3%)은 4대보험이 적용되지 않습니다.',
             style: TextStyle(color: Colors.orange, fontSize: 16),
             ),
         ),

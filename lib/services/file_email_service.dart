@@ -198,7 +198,7 @@ class FileEmailService {
     for (var result in results) {
       rows.add([
         result.workerName,
-        result.employmentType == 'regular' ? '정규직' : '프리랜서',
+        result.employmentType == 'regular' ? '근로소득' : '사업소득',
         result.baseSalary.toString(),
         result.overtimePay.toString(),
         result.nightPay.toString(),

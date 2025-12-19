@@ -224,7 +224,7 @@ class _MainScreenState extends State<MainScreen> {
             return DataRow(cells: [
               DataCell(Text(worker.name)),
               DataCell(Text(worker.birthDate)),
-              DataCell(Text(worker.employmentType == 'regular' ? '정규직' : '프리랜서')),
+              DataCell(Text(worker.employmentType == 'regular' ? '근로소득' : '사업소득')),
               DataCell(Text('${formatMoney(worker.monthlySalary)}원')),
               DataCell(Text('${formatMoney(worker.hourlyRate)}원')),
               DataCell(Text(result != null ? '${formatMoney(result.totalPayment)}원' : '-')),

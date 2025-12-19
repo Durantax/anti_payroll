@@ -346,7 +346,7 @@ class _SmtpSettingsTabState extends State<_SmtpSettingsTab> {
                 ],
                 ),
             ),
-            )
+            ),
 
             const SizedBox(height: 24),
             const Divider(),

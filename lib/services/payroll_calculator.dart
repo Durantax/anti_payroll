@@ -56,12 +56,25 @@ class PayrollCalculator {
     }
 
     // 4. 휴일수당 (5인 이상 사업장만)
+    // 8시간까지는 1.5배, 8시간 초과는 2배
     int holidayPay = 0;
     String holidayFormula = '';
     if (has5OrMoreWorkers && monthly.holidayHours > 0) {
-      holidayPay = (hourlyRate * monthly.holidayHours * AppConstants.holidayMultiplier).round();
-      holidayFormula =
-          '${formatMoney(hourlyRate)}원 × ${monthly.holidayHours.toStringAsFixed(0)}시간 × 1.5';
+      if (monthly.holidayHours <= 8) {
+        // 8시간 이하: 1.5배
+        holidayPay = (hourlyRate * monthly.holidayHours * 1.5).round();
+        holidayFormula =
+            '${formatMoney(hourlyRate)}원 × ${monthly.holidayHours.toStringAsFixed(1)}시간 × 1.5';
+      } else {
+        // 8시간 초과: 8시간까지는 1.5배, 초과분은 2배
+        final baseHours = 8.0;
+        final overtimeHours = monthly.holidayHours - 8;
+        final basePay = (hourlyRate * baseHours * 1.5).round();
+        final overtimePay = (hourlyRate * overtimeHours * 2.0).round();
+        holidayPay = basePay + overtimePay;
+        holidayFormula =
+            '(${formatMoney(hourlyRate)}원 × 8h × 1.5) + (${formatMoney(hourlyRate)}원 × ${overtimeHours.toStringAsFixed(1)}h × 2.0)';
+      }
     }
 
     // 5. 주휴수당 (개근주수 × 시급 × 주소정근로시간)
