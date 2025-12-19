@@ -29,16 +29,20 @@ class PayrollCalculator {
     required bool has5OrMoreWorkers,
   }) {
     // ===== 통상시급 계산 =====
-    // 월급제의 경우: 월급 ÷ (주소정근로시간 × 4.345주)
+    // 월급제의 경우: 월급 ÷ 월 소정근로시간
+    // 월 소정근로시간 = 주소정근로시간 × 4.345주 (주휴 포함)
     // 시급제의 경우: 입력된 시급 사용
     int hourlyRate = worker.hourlyRate;
     String hourlyRateSource = '입력된 시급';
+    bool isMonthlyWorker = worker.salaryType == 'MONTHLY' && worker.monthlySalary > 0;
     
-    if (worker.salaryType == 'MONTHLY' && worker.monthlySalary > 0) {
+    if (isMonthlyWorker) {
       // 월급제: 통상시급 자동 계산
+      // 주휴시간은 별도 계산하지 않음 (월급에 포함됨)
       final weeklyHours = monthly.weeklyHours > 0 ? monthly.weeklyHours : 40.0;
-      hourlyRate = (worker.monthlySalary / (weeklyHours * AppConstants.weeksPerMonth)).round();
-      hourlyRateSource = '${formatMoney(worker.monthlySalary)}원 ÷ (${weeklyHours}시간 × 4.345주)';
+      final monthlyHours = weeklyHours * AppConstants.weeksPerMonth;
+      hourlyRate = (worker.monthlySalary / monthlyHours).round();
+      hourlyRateSource = '${formatMoney(worker.monthlySalary)}원 ÷ ${monthlyHours.toStringAsFixed(1)}시간';
     }
     
     final normalHours = monthly.normalHours;
@@ -99,15 +103,18 @@ class PayrollCalculator {
       }
     }
 
-    // 5. 주휴수당 (시급 × 1일 소정근로시간(최대 8시간) × 개근주수)
+    // 5. 주휴수당 (시급제만 계산, 월급제는 이미 포함되어 있음)
     int weeklyHolidayPay = 0;
     String weeklyHolidayFormula = '';
-    if (monthly.weekCount > 0 && monthly.weeklyHours > 0) {
+    if (!isMonthlyWorker && monthly.weekCount > 0 && monthly.weeklyHours > 0) {
+      // 시급제만: 시급 × 1일 소정근로시간(최대 8시간) × 개근주수
       // 1일 소정근로시간 = 주 소정근로시간 ÷ 5일 (최대 8시간)
       final dailyHours = min(monthly.weeklyHours / 5, 8.0);
       weeklyHolidayPay = (hourlyRate * dailyHours * monthly.weekCount).round();
       weeklyHolidayFormula =
           '${formatMoney(hourlyRate)}원 × ${dailyHours.toStringAsFixed(1)}시간 × ${monthly.weekCount}주';
+    } else if (isMonthlyWorker) {
+      weeklyHolidayFormula = '월급에 포함';
     }
 
     // 6. 상여금
