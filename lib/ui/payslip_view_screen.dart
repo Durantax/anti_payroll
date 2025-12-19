@@ -4,6 +4,7 @@ import '../core/models.dart';
 class PayslipViewScreen extends StatelessWidget {
   final WorkerModel worker;
   final SalaryResult salaryResult;
+  final MonthlyData? monthlyData;
   final int year;
   final int month;
   final String clientName;
@@ -13,6 +14,7 @@ class PayslipViewScreen extends StatelessWidget {
     Key? key,
     required this.worker,
     required this.salaryResult,
+    this.monthlyData,
     required this.year,
     required this.month,
     required this.clientName,
@@ -237,7 +239,7 @@ class PayslipViewScreen extends StatelessWidget {
     String title,
     List<_AmountRow> rows,
     int total,
-    Color color,
+    MaterialColor color,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,6 +319,8 @@ class PayslipViewScreen extends StatelessWidget {
   }
 
   Widget _buildWorkInfoSection(BuildContext context) {
+    if (monthlyData == null) return const SizedBox.shrink();
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -337,13 +341,13 @@ class PayslipViewScreen extends StatelessWidget {
           ),
           child: Column(
             children: [
-              _InfoRow('정상 근로시간', '${salaryResult.normalHours}시간'),
-              if (salaryResult.overtimeHours > 0)
-                _InfoRow('연장 근로시간', '${salaryResult.overtimeHours}시간'),
-              if (salaryResult.nightHours > 0)
-                _InfoRow('야간 근로시간', '${salaryResult.nightHours}시간'),
-              if (salaryResult.holidayHours > 0)
-                _InfoRow('휴일 근로시간', '${salaryResult.holidayHours}시간'),
+              _InfoRow('정상 근로시간', '${monthlyData!.normalHours}시간'),
+              if (monthlyData!.overtimeHours > 0)
+                _InfoRow('연장 근로시간', '${monthlyData!.overtimeHours}시간'),
+              if (monthlyData!.nightHours > 0)
+                _InfoRow('야간 근로시간', '${monthlyData!.nightHours}시간'),
+              if (monthlyData!.holidayHours > 0)
+                _InfoRow('휴일 근로시간', '${monthlyData!.holidayHours}시간'),
             ].map((row) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(

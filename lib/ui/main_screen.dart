@@ -592,12 +592,14 @@ class _MainScreenContentState extends State<MainScreenContent> {
 
   void _viewPayslip(WorkerModel worker, SalaryResult result) {
     final provider = context.read<AppProvider>();
+    final monthlyData = provider.getMonthlyData(worker.id!);
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => PayslipViewScreen(
           worker: worker,
           salaryResult: result,
+          monthlyData: monthlyData,
           year: provider.selectedYear,
           month: provider.selectedMonth,
           clientName: provider.selectedClient!.name,
