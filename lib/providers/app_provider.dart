@@ -189,8 +189,19 @@ class AppProvider with ChangeNotifier {
     notifyListeners();
     
     if (_selectedClient != null) {
+      // 새로운 월의 데이터 로드
+      _loadMonthlyDataForAllWorkers();
       loadSendStatus();
     }
+  }
+
+  Future<void> _loadMonthlyDataForAllWorkers() async {
+    for (var worker in currentWorkers) {
+      if (worker.id != null) {
+        await _loadMonthlyDataForWorker(worker.id!);
+      }
+    }
+    notifyListeners();
   }
 
   Future<void> updateClientSettings({
@@ -241,10 +252,13 @@ class AppProvider with ChangeNotifier {
       final workers = await _apiService.getEmployees(clientId);
       _workersByClient[clientId] = workers;
 
-      // 각 직원의 월별 데이터 초기화
+      // 각 직원의 월별 데이터 초기화 및 로드
       for (var worker in workers) {
         if (worker.id != null) {
           _monthlyDataByWorker[worker.id!] = {};
+          
+          // 현재 선택된 월의 데이터 로드
+          await _loadMonthlyDataForWorker(worker.id!);
         }
       }
 
@@ -254,6 +268,27 @@ class AppProvider with ChangeNotifier {
       _setError('직원 목록 조회 실패: $e');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  Future<void> _loadMonthlyDataForWorker(int workerId) async {
+    try {
+      final data = await _apiService.getMonthlyData(
+        employeeId: workerId,
+        ym: selectedYm,
+      );
+
+      if (data != null) {
+        if (_monthlyDataByWorker[workerId] == null) {
+          _monthlyDataByWorker[workerId] = {};
+        }
+        _monthlyDataByWorker[workerId]![_selectedDate.month] = data;
+        
+        // 급여 계산
+        _calculateSalary(workerId);
+      }
+    } catch (e) {
+      print('월별 데이터 로드 실패 (직원 $workerId): $e');
     }
   }
 
@@ -306,15 +341,24 @@ class AppProvider with ChangeNotifier {
 
   // ========== 월별 근무 데이터 ==========
 
-  void updateMonthlyData(int workerId, MonthlyData data) {
-    if (_monthlyDataByWorker[workerId] == null) {
-      _monthlyDataByWorker[workerId] = {};
-    }
-    _monthlyDataByWorker[workerId]![_selectedDate.month] = data;
+  Future<void> updateMonthlyData(int workerId, MonthlyData data) async {
+    try {
+      // 서버에 저장
+      await _apiService.saveMonthlyData(data);
 
-    // 급여 재계산
-    _calculateSalary(workerId);
-    notifyListeners();
+      // 로컬 상태 업데이트
+      if (_monthlyDataByWorker[workerId] == null) {
+        _monthlyDataByWorker[workerId] = {};
+      }
+      _monthlyDataByWorker[workerId]![_selectedDate.month] = data;
+
+      // 급여 재계산
+      _calculateSalary(workerId);
+      notifyListeners();
+    } catch (e) {
+      _setError('월별 데이터 저장 실패: $e');
+      rethrow;
+    }
   }
 
   MonthlyData? getMonthlyData(int workerId) {

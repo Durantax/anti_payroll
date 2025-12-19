@@ -102,6 +102,90 @@ class ApiService {
     }
   }
 
+  // ========== 월별 근무 데이터 ==========
+
+  Future<MonthlyData?> getMonthlyData({
+    required int employeeId,
+    required String ym,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_serverUrl/employees/$employeeId/monthly-data/$ym'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        return MonthlyData(
+          employeeId: data['employeeId'] as int,
+          ym: data['ym'] as String,
+          normalHours: (data['normalHours'] as num?)?.toDouble() ?? 209,
+          overtimeHours: (data['overtimeHours'] as num?)?.toDouble() ?? 0,
+          nightHours: (data['nightHours'] as num?)?.toDouble() ?? 0,
+          holidayHours: (data['holidayHours'] as num?)?.toDouble() ?? 0,
+          weeklyHours: (data['weeklyHours'] as num?)?.toDouble() ?? 40,
+          weekCount: (data['weekCount'] as int?) ?? 4,
+          bonus: (data['bonus'] as int?) ?? 0,
+          additionalPay1: (data['additionalPay1'] as int?) ?? 0,
+          additionalPay1Name: (data['additionalPay1Name'] as String?) ?? '',
+          additionalPay2: (data['additionalPay2'] as int?) ?? 0,
+          additionalPay2Name: (data['additionalPay2Name'] as String?) ?? '',
+          additionalPay3: (data['additionalPay3'] as int?) ?? 0,
+          additionalPay3Name: (data['additionalPay3Name'] as String?) ?? '',
+          additionalDeduct1: (data['additionalDeduct1'] as int?) ?? 0,
+          additionalDeduct1Name: (data['additionalDeduct1Name'] as String?) ?? '',
+          additionalDeduct2: (data['additionalDeduct2'] as int?) ?? 0,
+          additionalDeduct2Name: (data['additionalDeduct2Name'] as String?) ?? '',
+          additionalDeduct3: (data['additionalDeduct3'] as int?) ?? 0,
+          additionalDeduct3Name: (data['additionalDeduct3Name'] as String?) ?? '',
+        );
+      } else if (response.statusCode == 404) {
+        return null;
+      } else {
+        throw Exception('월별 데이터 조회 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('월별 데이터 조회 에러: $e');
+      return null;
+    }
+  }
+
+  Future<void> saveMonthlyData(MonthlyData data) async {
+    final body = {
+      'employeeId': data.employeeId,
+      'ym': data.ym,
+      'normalHours': data.normalHours,
+      'overtimeHours': data.overtimeHours,
+      'nightHours': data.nightHours,
+      'holidayHours': data.holidayHours,
+      'weeklyHours': data.weeklyHours,
+      'weekCount': data.weekCount,
+      'bonus': data.bonus,
+      'additionalPay1': data.additionalPay1,
+      'additionalPay1Name': data.additionalPay1Name,
+      'additionalPay2': data.additionalPay2,
+      'additionalPay2Name': data.additionalPay2Name,
+      'additionalPay3': data.additionalPay3,
+      'additionalPay3Name': data.additionalPay3Name,
+      'additionalDeduct1': data.additionalDeduct1,
+      'additionalDeduct1Name': data.additionalDeduct1Name,
+      'additionalDeduct2': data.additionalDeduct2,
+      'additionalDeduct2Name': data.additionalDeduct2Name,
+      'additionalDeduct3': data.additionalDeduct3,
+      'additionalDeduct3Name': data.additionalDeduct3Name,
+    };
+
+    final response = await http.post(
+      Uri.parse('$_serverUrl/employees/${data.employeeId}/monthly-data'),
+      headers: _headers,
+      body: json.encode(body),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('월별 데이터 저장 실패: ${response.statusCode}');
+    }
+  }
+
   // ========== 발송 상태 ==========
 
   Future<ClientSendStatus> getClientSendStatus({
