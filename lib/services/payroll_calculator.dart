@@ -30,20 +30,28 @@ class PayrollCalculator {
     required bool has5OrMoreWorkers,
   }) {
     // ===== 통상시급 계산 =====
-    // 월급제의 경우: 월급 ÷ 월 소정근로시간
-    // 월 소정근로시간 = 주소정근로시간 × 4.345주 (주휴 포함)
-    // 시급제의 경우: 입력된 시급 사용
+    // 📌 근로기준법상 통상시급 정의:
+    // - "정기적·일률적·고정적으로 지급되는 임금을 시급으로 환산한 금액"
+    // - 연장/야간/휴일수당 계산의 기준이 되는 시급
+    //
+    // 📌 월급제의 경우:
+    // - 통상시급 = 월급 ÷ 월 소정근로시간
+    // - 월 소정근로시간 = 주소정근로시간 × 4.345주 (주휴 포함)
+    // - 예: 월급 3,000,000원, 주 40시간 → 통상시급 = 3,000,000 ÷ (40 × 4.345) = 17,271원
+    //
+    // 📌 시급제의 경우:
+    // - 입력된 시급을 통상시급으로 사용
     int hourlyRate = worker.hourlyRate;
     String hourlyRateSource = '입력된 시급';
     bool isMonthlyWorker = worker.salaryType == 'MONTHLY' && worker.monthlySalary > 0;
     
     if (isMonthlyWorker) {
       // 월급제: 통상시급 자동 계산
-      // 주휴시간은 별도 계산하지 않음 (월급에 포함됨)
+      // 주휴시간은 별도 계산하지 않음 (월급에 이미 포함되어 있음)
       final weeklyHours = monthly.weeklyHours > 0 ? monthly.weeklyHours : 40.0;
-      final monthlyHours = weeklyHours * AppConstants.weeksPerMonth;
+      final monthlyHours = weeklyHours * AppConstants.weeksPerMonth; // 예: 40 × 4.345 = 173.8시간
       hourlyRate = (worker.monthlySalary / monthlyHours).round();
-      hourlyRateSource = '${formatMoney(worker.monthlySalary)}원 ÷ ${monthlyHours.toStringAsFixed(1)}시간';
+      hourlyRateSource = '${formatMoney(worker.monthlySalary)}원 ÷ ${monthlyHours.toStringAsFixed(1)}시간 = 통상시급 ${formatMoney(hourlyRate)}원';
     }
     
     final normalHours = monthly.normalHours;
@@ -208,16 +216,17 @@ class PayrollCalculator {
     String incomeTaxFormula;
     String localTaxFormula;
     
-    // 월 과세소득 계산 (비과세 제외, 4대보험 공제 전)
-    final monthlyTaxableIncome = taxableIncome ~/ 12;
+    // 월 과세소득 계산 (비과세 제외)
+    final monthlyTaxableIncome = taxableIncome;
     
     // 공제대상 가족수 (WorkerModel에서 가져옴)
     final taxDependents = worker.taxDependents;
     
-    // 간이세액표 적용하여 소득세 계산
+    // 간이세액표 적용하여 소득세 계산 (자녀 수 반영)
     final taxes = IncomeTaxCalculator.calculateIncomeTax(
       monthlyIncome: monthlyTaxableIncome,
       familyCount: taxDependents,
+      childrenCount: worker.childrenCount, // 8-20세 자녀 수
     );
     
     // 소득세율 적용 (80%, 100%, 120%)
@@ -232,7 +241,9 @@ class PayrollCalculator {
       taxRateLabel = ' × 120%';
     }
     
-    incomeTaxFormula = '간이세액표 (월 ${formatMoney(monthlyTaxableIncome)}원, 가족 ${taxDependents}인)$taxRateLabel';
+    // 소득세 공식 설명 (간이세액표 + 자녀공제 + 세율 적용)
+    String childLabel = worker.childrenCount > 0 ? ', 자녀 ${worker.childrenCount}명' : '';
+    incomeTaxFormula = '간이세액표 (월 ${formatMoney(monthlyTaxableIncome)}원, 가족 ${taxDependents}인$childLabel)$taxRateLabel';
     localTaxFormula = '소득세 × 10%';
 
     // 7. 추가공제
