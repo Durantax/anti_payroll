@@ -141,7 +141,7 @@ class WorkerModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
+    final map = <String, dynamic>{
       'clientId': clientId,
       'name': name,
       'birthDate': birthDate,
@@ -163,6 +163,13 @@ class WorkerModel {
       'emailCc': emailCc,
       'useEmail': useEmail,
     };
+    
+    // employeeId가 있으면 포함 (업데이트 시 필수)
+    if (id != null) {
+      map['employeeId'] = id;
+    }
+    
+    return map;
   }
 
   WorkerModel copyWith({
