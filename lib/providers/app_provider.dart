@@ -17,6 +17,7 @@ class AppProvider with ChangeNotifier {
   Map<int, List<WorkerModel>> _workersByClient = {};
   Map<int, Map<int, MonthlyData>> _monthlyDataByWorker = {};
   Map<int, SalaryResult> _salaryResults = {};
+  Map<int, bool> _workerFinalizedStatus = {}; // 직원별 마감 상태 (workerId -> isFin alized)
   
   SmtpConfig? _smtpConfig;
   AppSettings? _appSettings;
@@ -339,6 +340,24 @@ class AppProvider with ChangeNotifier {
     }
   }
 
+  // ========== 마감 상태 관리 ==========
+
+  bool isWorkerFinalized(int workerId) {
+    return _workerFinalizedStatus[workerId] ?? false;
+  }
+
+  void toggleWorkerFinalized(int workerId) {
+    _workerFinalizedStatus[workerId] = !(_workerFinalizedStatus[workerId] ?? false);
+    notifyListeners();
+  }
+
+  List<int> get finalizedWorkerIds {
+    return _workerFinalizedStatus.entries
+        .where((entry) => entry.value == true)
+        .map((entry) => entry.key)
+        .toList();
+  }
+
   // ========== 월별 근무 데이터 ==========
 
   Future<void> updateMonthlyData(int workerId, MonthlyData data) async {
@@ -545,13 +564,19 @@ class AppProvider with ChangeNotifier {
 
     try {
       _setLoading(true);
-      for (var result in _salaryResults.values) {
-        await FileEmailService.generatePayslipPdf(
-          client: _selectedClient!,
-          result: result,
-          year: selectedYear,
-          month: selectedMonth,
-        );
+      // 마감된 직원의 PDF만 생성
+      for (var entry in _salaryResults.entries) {
+        final workerId = entry.key;
+        final result = entry.value;
+        
+        if (isWorkerFinalized(workerId)) {
+          await FileEmailService.generatePayslipPdf(
+            client: _selectedClient!,
+            result: result,
+            year: selectedYear,
+            month: selectedMonth,
+          );
+        }
       }
       _setError(null);
     } catch (e) {
@@ -637,8 +662,13 @@ class AppProvider with ChangeNotifier {
   Future<void> sendAllEmails() async {
     if (_selectedClient == null || _smtpConfig == null) return;
 
+    // 마감된 직원 중에서 이메일 발송 조건에 맞는 직원만 선택
     final targetWorkers = currentWorkers.where((w) =>
-        w.useEmail && w.emailTo != null && w.emailTo!.isNotEmpty && w.id != null).toList();
+        w.useEmail && 
+        w.emailTo != null && 
+        w.emailTo!.isNotEmpty && 
+        w.id != null && 
+        isWorkerFinalized(w.id!)).toList();
 
     if (targetWorkers.isEmpty) {
       _setError('발송 대상이 없습니다');

@@ -218,6 +218,7 @@ class _MainScreenState extends State<MainScreen> {
       child: SingleChildScrollView(
         child: DataTable(
           columns: const [
+            DataColumn(label: Text('마감')),
             DataColumn(label: Text('이름')),
             DataColumn(label: Text('생년월일')),
             DataColumn(label: Text('구분')),
@@ -231,7 +232,15 @@ class _MainScreenState extends State<MainScreen> {
           rows: workers.map((worker) {
             final result = provider.getSalaryResult(worker.id!);
 
+            final isFinalized = provider.isWorkerFinalized(worker.id!);
+            
             return DataRow(cells: [
+              DataCell(
+                Checkbox(
+                  value: isFinalized,
+                  onChanged: (value) => provider.toggleWorkerFinalized(worker.id!),
+                ),
+              ),
               DataCell(Text(worker.name)),
               DataCell(Text(worker.birthDate)),
               DataCell(Text(worker.employmentType == 'regular' ? '근로소득' : '사업소득')),
