@@ -18,9 +18,13 @@ class FileEmailService {
   static Future<File> generateExcelTemplate(String clientName) async {
     final excel = Excel.createExcel();
     
-    // Sheet1 삭제하고 급여대장만 사용
-    excel.delete('Sheet1');
+    // 급여대장 시트 생성
     final sheet = excel['급여대장'];
+    
+    // Sheet1 삭제 (생성 후 삭제)
+    if (excel.sheets.containsKey('Sheet1')) {
+      excel.delete('Sheet1');
+    }
 
     // 거래처 정보
     sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('거래처명');

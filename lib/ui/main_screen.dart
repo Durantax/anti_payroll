@@ -161,8 +161,18 @@ class _MainScreenState extends State<MainScreen> {
       color: Colors.grey.shade100,
       child: Row(
         children: [
-          const Text('📂 Excel 관리', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text('📂 데이터 관리', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(width: 16),
+          ElevatedButton.icon(
+            onPressed: provider.selectedClient == null ? null : _addWorker,
+            icon: const Icon(Icons.person_add),
+            label: const Text('직원 추가'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 8),
           ElevatedButton.icon(
             onPressed: provider.selectedClient == null ? null : () => provider.exportExcelTemplate(),
             icon: const Icon(Icons.download),
@@ -407,6 +417,10 @@ class _MainScreenState extends State<MainScreen> {
       context: context,
       builder: (_) => ClientSettingsDialog(client: client),
     );
+  }
+
+  void _addWorker() {
+    _showWorkerDialog(null);
   }
 
   void _showWorkerDialog(WorkerModel? worker) {
