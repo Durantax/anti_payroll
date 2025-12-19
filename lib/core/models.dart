@@ -273,13 +273,16 @@ class MonthlyData {
   final int weekCount; // 개근주수
   final int bonus;
   
-  // 추가 수당/공제
+  // 추가 수당/공제 (과세/비과세 구분 가능)
   final int additionalPay1;
   final String additionalPay1Name;
+  final bool additionalPay1IsTaxFree; // 비과세 여부
   final int additionalPay2;
   final String additionalPay2Name;
+  final bool additionalPay2IsTaxFree;
   final int additionalPay3;
   final String additionalPay3Name;
+  final bool additionalPay3IsTaxFree;
   
   final int additionalDeduct1;
   final String additionalDeduct1Name;
@@ -300,10 +303,13 @@ class MonthlyData {
     this.bonus = 0,
     this.additionalPay1 = 0,
     this.additionalPay1Name = '',
+    this.additionalPay1IsTaxFree = false,
     this.additionalPay2 = 0,
     this.additionalPay2Name = '',
+    this.additionalPay2IsTaxFree = false,
     this.additionalPay3 = 0,
     this.additionalPay3Name = '',
+    this.additionalPay3IsTaxFree = false,
     this.additionalDeduct1 = 0,
     this.additionalDeduct1Name = '',
     this.additionalDeduct2 = 0,
@@ -314,6 +320,24 @@ class MonthlyData {
 
   int get totalAdditionalPay => additionalPay1 + additionalPay2 + additionalPay3;
   int get totalAdditionalDeduct => additionalDeduct1 + additionalDeduct2 + additionalDeduct3;
+  
+  // 과세 수당 합계
+  int get taxableAdditionalPay {
+    int total = 0;
+    if (!additionalPay1IsTaxFree) total += additionalPay1;
+    if (!additionalPay2IsTaxFree) total += additionalPay2;
+    if (!additionalPay3IsTaxFree) total += additionalPay3;
+    return total;
+  }
+  
+  // 비과세 수당 합계
+  int get taxFreeAdditionalPay {
+    int total = 0;
+    if (additionalPay1IsTaxFree) total += additionalPay1;
+    if (additionalPay2IsTaxFree) total += additionalPay2;
+    if (additionalPay3IsTaxFree) total += additionalPay3;
+    return total;
+  }
 }
 
 // ============================================================================

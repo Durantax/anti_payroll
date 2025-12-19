@@ -139,22 +139,26 @@ class PayrollCalculator {
         additionalPay1 +
         additionalPay2 +
         additionalPay3 +
-        worker.foodAllowance +
-        worker.carAllowance;
+        worker.taxFreeMeal +
+        worker.taxFreeCarMaintenance +
+        worker.otherTaxFree;
 
     // ===== 4대보험 기준액 계산 =====
-    // 과세 대상 수당: 기본급 + 연장 + 야간 + 휴일 + 주휴 + 상여금 + 추가수당
-    // 비과세 수당: 식대, 차량유지비 제외
-    // TODO: 추가수당의 과세 여부는 수당 마스터 연동 후 개선
+    // 과세 대상 수당: 기본급 + 연장 + 야간 + 휴일 + 주휴 + 상여금 + 과세 추가수당
+    // 비과세 수당: WorkerModel의 비과세 항목 + MonthlyData의 비과세 추가수당
     final taxableIncome = baseSalary +
         overtimePay +
         nightPay +
         holidayPay +
         weeklyHolidayPay +
         bonus +
-        additionalPay1 +
-        additionalPay2 +
-        additionalPay3;
+        monthly.taxableAdditionalPay; // 과세 추가수당만 포함
+    
+    // 비과세 합계 (WorkerModel + MonthlyData)
+    final totalTaxFree = worker.taxFreeMeal + 
+                        worker.taxFreeCarMaintenance + 
+                        worker.otherTaxFree +
+                        monthly.taxFreeAdditionalPay; // 비과세 추가수당
     
     // 4대보험 기준액 = 과세 소득 (비과세 수당 제외됨)
     final insuranceBase = taxableIncome;
@@ -204,7 +208,7 @@ class PayrollCalculator {
     String incomeTaxFormula;
     String localTaxFormula;
     
-    // 월 과세소득 계산 (4대보험 공제 전)
+    // 월 과세소득 계산 (비과세 제외, 4대보험 공제 전)
     final monthlyTaxableIncome = taxableIncome ~/ 12;
     
     // 공제대상 가족수 (WorkerModel에서 가져옴)
@@ -216,9 +220,19 @@ class PayrollCalculator {
       familyCount: taxDependents,
     );
     
-    incomeTax = taxes[0]; // 이미 1의 자리 절사됨
-    localIncomeTax = taxes[1]; // 이미 1의 자리 절사됨
-    incomeTaxFormula = '간이세액표 (월 ${formatMoney(monthlyTaxableIncome)}원, 가족 ${taxDependents}인)';
+    // 소득세율 적용 (80%, 100%, 120%)
+    final taxRateMultiplier = worker.incomeTaxRate / 100.0;
+    incomeTax = ((taxes[0] * taxRateMultiplier) ~/ 10) * 10; // 1의 자리 절사
+    localIncomeTax = ((taxes[1] * taxRateMultiplier) ~/ 10) * 10; // 1의 자리 절사
+    
+    String taxRateLabel = '';
+    if (worker.incomeTaxRate == 80) {
+      taxRateLabel = ' × 80%';
+    } else if (worker.incomeTaxRate == 120) {
+      taxRateLabel = ' × 120%';
+    }
+    
+    incomeTaxFormula = '간이세액표 (월 ${formatMoney(monthlyTaxableIncome)}원, 가족 ${taxDependents}인)$taxRateLabel';
     localTaxFormula = '소득세 × 10%';
 
     // 7. 추가공제

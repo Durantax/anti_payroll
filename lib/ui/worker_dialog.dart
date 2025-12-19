@@ -31,6 +31,14 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
   late TextEditingController _birthDateController;
   late TextEditingController _phoneController;
 
+  // 세금 정보
+  late TextEditingController _taxDependentsController;
+  late TextEditingController _childrenCountController;
+  late TextEditingController _taxFreeMealController;
+  late TextEditingController _taxFreeCarMaintenanceController;
+  late TextEditingController _otherTaxFreeController;
+  late int _incomeTaxRate;
+
   // 급여 정보
   late TextEditingController _monthlySalaryController;
   late TextEditingController _hourlyRateController;
@@ -45,10 +53,13 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
   // 추가 수당/공제
   late TextEditingController _additionalPay1Controller;
   late TextEditingController _additionalPay1NameController;
+  late bool _additionalPay1IsTaxFree;
   late TextEditingController _additionalPay2Controller;
   late TextEditingController _additionalPay2NameController;
+  late bool _additionalPay2IsTaxFree;
   late TextEditingController _additionalPay3Controller;
   late TextEditingController _additionalPay3NameController;
+  late bool _additionalPay3IsTaxFree;
 
   late TextEditingController _additionalDeduct1Controller;
   late TextEditingController _additionalDeduct1NameController;
@@ -75,7 +86,7 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
 
     final worker = widget.worker;
     final monthly = widget.monthlyData;
@@ -99,10 +110,13 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
     // 추가 수당/공제
     _additionalPay1Controller = TextEditingController(text: monthly?.additionalPay1.toString() ?? '0');
     _additionalPay1NameController = TextEditingController(text: monthly?.additionalPay1Name ?? '');
+    _additionalPay1IsTaxFree = monthly?.additionalPay1IsTaxFree ?? false;
     _additionalPay2Controller = TextEditingController(text: monthly?.additionalPay2.toString() ?? '0');
     _additionalPay2NameController = TextEditingController(text: monthly?.additionalPay2Name ?? '');
+    _additionalPay2IsTaxFree = monthly?.additionalPay2IsTaxFree ?? false;
     _additionalPay3Controller = TextEditingController(text: monthly?.additionalPay3.toString() ?? '0');
     _additionalPay3NameController = TextEditingController(text: monthly?.additionalPay3Name ?? '');
+    _additionalPay3IsTaxFree = monthly?.additionalPay3IsTaxFree ?? false;
 
     _additionalDeduct1Controller = TextEditingController(text: monthly?.additionalDeduct1.toString() ?? '0');
     _additionalDeduct1NameController = TextEditingController(text: monthly?.additionalDeduct1Name ?? '');
@@ -125,6 +139,14 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
 
     // 구분
     _employmentType = worker?.employmentType ?? 'regular';
+
+    // 세금 정보
+    _taxDependentsController = TextEditingController(text: worker?.taxDependents.toString() ?? '1');
+    _childrenCountController = TextEditingController(text: worker?.childrenCount.toString() ?? '0');
+    _taxFreeMealController = TextEditingController(text: worker?.taxFreeMeal.toString() ?? '0');
+    _taxFreeCarMaintenanceController = TextEditingController(text: worker?.taxFreeCarMaintenance.toString() ?? '0');
+    _otherTaxFreeController = TextEditingController(text: worker?.otherTaxFree.toString() ?? '0');
+    _incomeTaxRate = worker?.incomeTaxRate ?? 100;
   }
 
   @override
@@ -157,6 +179,11 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
     _pensionInsurableWageController.dispose();
     _emailToController.dispose();
     _emailCcController.dispose();
+    _taxDependentsController.dispose();
+    _childrenCountController.dispose();
+    _taxFreeMealController.dispose();
+    _taxFreeCarMaintenanceController.dispose();
+    _otherTaxFreeController.dispose();
     super.dispose();
   }
 
@@ -181,10 +208,12 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
               const SizedBox(height: 16),
               TabBar(
                 controller: _tabController,
+                isScrollable: true,
                 tabs: const [
                   Tab(text: '기본정보'),
                   Tab(text: '급여'),
                   Tab(text: '4대보험'),
+                  Tab(text: '세금'),
                   Tab(text: '이메일'),
                 ],
               ),
@@ -195,6 +224,7 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
                     _buildBasicInfoTab(),
                     _buildSalaryTab(isFreelancer),
                     _buildInsuranceTab(isFreelancer),
+                    _buildTaxTab(isFreelancer),
                     _buildEmailTab(),
                   ],
                 ),
@@ -364,6 +394,17 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
                   decoration: const InputDecoration(labelText: '항목명', border: OutlineInputBorder()),
                 ),
               ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 100,
+                child: CheckboxListTile(
+                  dense: true,
+                  title: const Text('비과세', style: TextStyle(fontSize: 12)),
+                  value: _additionalPay1IsTaxFree,
+                  onChanged: (v) => setState(() => _additionalPay1IsTaxFree = v ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -384,6 +425,17 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
                   decoration: const InputDecoration(labelText: '항목명', border: OutlineInputBorder()),
                 ),
               ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 100,
+                child: CheckboxListTile(
+                  dense: true,
+                  title: const Text('비과세', style: TextStyle(fontSize: 12)),
+                  value: _additionalPay2IsTaxFree,
+                  onChanged: (v) => setState(() => _additionalPay2IsTaxFree = v ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -402,6 +454,17 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
                 child: TextFormField(
                   controller: _additionalPay3NameController,
                   decoration: const InputDecoration(labelText: '항목명', border: OutlineInputBorder()),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 100,
+                child: CheckboxListTile(
+                  dense: true,
+                  title: const Text('비과세', style: TextStyle(fontSize: 12)),
+                  value: _additionalPay3IsTaxFree,
+                  onChanged: (v) => setState(() => _additionalPay3IsTaxFree = v ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
                 ),
               ),
             ],
@@ -551,6 +614,121 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
     );
   }
 
+  Widget _buildTaxTab(bool isFreelancer) {
+    if (isFreelancer) {
+      return Center(
+        child: Card(
+          color: Colors.orange[50],
+          child: const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              '사업소득(3.3%)은 소득세가 자동 계산됩니다.',
+              style: TextStyle(color: Colors.orange, fontSize: 16),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('━━━ 간이세액표 공제 ━━━', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _taxDependentsController,
+            decoration: const InputDecoration(
+              labelText: '* 공제대상 가족수 (본인 포함)',
+              border: OutlineInputBorder(),
+              suffixText: '명',
+              hintText: '본인만 있으면 1명',
+              helperText: '배우자, 자녀, 부모님 등 부양가족 포함',
+            ),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            validator: (v) {
+              final val = int.tryParse(v ?? '');
+              if (val == null || val < 1) return '최소 1명 이상';
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _childrenCountController,
+            decoration: const InputDecoration(
+              labelText: '8세~20세 자녀 수',
+              border: OutlineInputBorder(),
+              suffixText: '명',
+              helperText: '자녀세액공제 대상 (8세 이상 20세 이하)',
+            ),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<int>(
+            value: _incomeTaxRate,
+            decoration: const InputDecoration(
+              labelText: '소득세율',
+              border: OutlineInputBorder(),
+              helperText: '기본 100%, 2자녀 이상 80%, 부양가족 많으면 120%',
+            ),
+            items: const [
+              DropdownMenuItem(value: 80, child: Text('80% (세금 적게)')),
+              DropdownMenuItem(value: 100, child: Text('100% (기본)')),
+              DropdownMenuItem(value: 120, child: Text('120% (세금 많이)')),
+            ],
+            onChanged: (value) => setState(() => _incomeTaxRate = value!),
+          ),
+          const SizedBox(height: 24),
+          const Text('━━━ 비과세 항목 ━━━', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          const Text(
+            '비과세 항목은 4대보험과 소득세 계산에서 제외됩니다.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _taxFreeMealController,
+            decoration: const InputDecoration(
+              labelText: '비과세 식대',
+              border: OutlineInputBorder(),
+              suffixText: '원',
+              helperText: '월 20만원까지 비과세 (식사 제공 시 월 10만원)',
+            ),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _taxFreeCarMaintenanceController,
+            decoration: const InputDecoration(
+              labelText: '비과세 차량유지비',
+              border: OutlineInputBorder(),
+              suffixText: '원',
+              helperText: '월 20만원까지 비과세 (본인 차량 업무 사용 시)',
+            ),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _otherTaxFreeController,
+            decoration: const InputDecoration(
+              labelText: '기타 비과세',
+              border: OutlineInputBorder(),
+              suffixText: '원',
+              helperText: '자가운전보조금, 출산/육아수당 등',
+            ),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildEmailTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -604,6 +782,13 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
       emailTo: _emailToController.text.isNotEmpty ? _emailToController.text : null,
       emailCc: _emailCcController.text.isNotEmpty ? _emailCcController.text : null,
       useEmail: _useEmail,
+      // 세금 정보
+      taxDependents: int.tryParse(_taxDependentsController.text) ?? 1,
+      childrenCount: int.tryParse(_childrenCountController.text) ?? 0,
+      taxFreeMeal: int.tryParse(_taxFreeMealController.text) ?? 0,
+      taxFreeCarMaintenance: int.tryParse(_taxFreeCarMaintenanceController.text) ?? 0,
+      otherTaxFree: int.tryParse(_otherTaxFreeController.text) ?? 0,
+      incomeTaxRate: _incomeTaxRate,
     );
 
     final provider = context.read<AppProvider>();
@@ -621,10 +806,13 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
       bonus: int.tryParse(_bonusController.text) ?? 0,
       additionalPay1: int.tryParse(_additionalPay1Controller.text) ?? 0,
       additionalPay1Name: _additionalPay1NameController.text,
+      additionalPay1IsTaxFree: _additionalPay1IsTaxFree,
       additionalPay2: int.tryParse(_additionalPay2Controller.text) ?? 0,
       additionalPay2Name: _additionalPay2NameController.text,
+      additionalPay2IsTaxFree: _additionalPay2IsTaxFree,
       additionalPay3: int.tryParse(_additionalPay3Controller.text) ?? 0,
       additionalPay3Name: _additionalPay3NameController.text,
+      additionalPay3IsTaxFree: _additionalPay3IsTaxFree,
       additionalDeduct1: int.tryParse(_additionalDeduct1Controller.text) ?? 0,
       additionalDeduct1Name: _additionalDeduct1NameController.text,
       additionalDeduct2: int.tryParse(_additionalDeduct2Controller.text) ?? 0,
