@@ -89,6 +89,8 @@ class WorkerModel {
   final String? emailTo;
   final String? emailCc;
   final bool useEmail;
+  
+  final int familyCount; // 공제대상 가족수 (본인 포함)
 
   WorkerModel({
     this.id,
@@ -101,6 +103,7 @@ class WorkerModel {
     this.salaryType = 'HOURLY',
     this.monthlySalary = 0,
     this.hourlyRate = 0,
+    this.familyCount = 1,
     this.normalHours = 209,
     this.foodAllowance = 0,
     this.carAllowance = 0,
@@ -137,6 +140,7 @@ class WorkerModel {
       emailTo: json['emailTo'] as String?,
       emailCc: json['emailCc'] as String?,
       useEmail: json['useEmail'] as bool? ?? false,
+      familyCount: (json['familyCount'] as num?)?.toInt() ?? 1,
     );
   }
 
@@ -162,6 +166,7 @@ class WorkerModel {
       'emailTo': emailTo,
       'emailCc': emailCc,
       'useEmail': useEmail,
+      'familyCount': familyCount,
     };
     
     // employeeId가 있으면 포함 (업데이트 시 필수)

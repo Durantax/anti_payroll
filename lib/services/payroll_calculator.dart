@@ -207,9 +207,8 @@ class PayrollCalculator {
     // 월 과세소득 계산 (4대보험 공제 전)
     final monthlyTaxableIncome = taxableIncome ~/ 12;
     
-    // 공제대상 가족수 추정 (본인 포함)
-    // TODO: WorkerModel에 가족수 필드 추가 필요
-    final familyCount = 1; // 기본값: 본인만
+    // 공제대상 가족수 (WorkerModel에서 가져옴)
+    final familyCount = worker.familyCount;
     
     // 간이세액표 적용하여 소득세 계산
     final taxes = IncomeTaxCalculator.calculateIncomeTax(
@@ -219,7 +218,7 @@ class PayrollCalculator {
     
     incomeTax = taxes[0]; // 이미 1의 자리 절사됨
     localIncomeTax = taxes[1]; // 이미 1의 자리 절사됨
-    incomeTaxFormula = '간이세액표 적용 (월 ${formatMoney(monthlyTaxableIncome)}원, 가족 ${familyCount}인)';
+    incomeTaxFormula = '간이세액표 (월 ${formatMoney(monthlyTaxableIncome)}원, 가족 ${familyCount}인)';
     localTaxFormula = '소득세 × 10%';
 
     // 7. 추가공제
