@@ -16,6 +16,9 @@ class FileEmailService {
 
   static Future<File> generateExcelTemplate(String clientName) async {
     final excel = Excel.createExcel();
+    
+    // Sheet1 삭제하고 급여대장만 사용
+    excel.delete('Sheet1');
     final sheet = excel['급여대장'];
 
     // 거래처 정보
@@ -49,7 +52,7 @@ class FileEmailService {
           .value = TextCellValue(headers[i]);
     }
 
-    // 샘플 데이터
+    // 샘플 데이터 (추가수당/공제는 기본값 0)
     final sampleRow = [
       '홍길동',
       '900101',
@@ -57,14 +60,14 @@ class FileEmailService {
       '14500',
       '40',
       '209',
-      '10',
-      '5',
-      '8',
+      '0',
+      '0',
+      '0',
       '4',
       '0',
-      '100000',
       '0',
-      '50000',
+      '0',
+      '0',
       '0',
     ];
 
