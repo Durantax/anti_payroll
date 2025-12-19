@@ -5,6 +5,7 @@ import '../core/models.dart';
 import '../providers/app_provider.dart';
 import 'worker_dialog.dart';
 import 'settings_screen.dart';
+import 'payslip_view_screen.dart';
 
 class MainScreenContent extends StatefulWidget {
   const MainScreenContent({Key? key}) : super(key: key);
@@ -328,6 +329,11 @@ class _MainScreenContentState extends State<MainScreenContent> {
                       tooltip: '수정',
                     ),
                     IconButton(
+                      icon: const Icon(Icons.visibility, size: 20, color: Colors.blue),
+                      onPressed: result != null ? () => _viewPayslip(worker, result) : null,
+                      tooltip: '명세서 조회',
+                    ),
+                    IconButton(
                       icon: const Icon(Icons.picture_as_pdf, size: 20),
                       onPressed: result != null ? () => _generatePdf(worker.id!) : null,
                       tooltip: 'PDF 생성',
@@ -582,6 +588,23 @@ class _MainScreenContentState extends State<MainScreenContent> {
         );
       }
     }
+  }
+
+  void _viewPayslip(WorkerModel worker, SalaryResult result) {
+    final provider = context.read<AppProvider>();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PayslipViewScreen(
+          worker: worker,
+          salaryResult: result,
+          year: provider.selectedYear,
+          month: provider.selectedMonth,
+          clientName: provider.selectedClient!.name,
+          bizId: provider.selectedClient!.bizId,
+        ),
+      ),
+    );
   }
 
   Future<void> _sendEmail(int workerId) async {
