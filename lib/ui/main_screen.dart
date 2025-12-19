@@ -6,14 +6,14 @@ import '../providers/app_provider.dart';
 import 'worker_dialog.dart';
 import 'settings_screen.dart';
 
-class MainScreen extends StatefulWidget {
-  const MainScreen({Key? key}) : super(key: key);
+class MainScreenContent extends StatefulWidget {
+  const MainScreenContent({Key? key}) : super(key: key);
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<MainScreenContent> createState() => _MainScreenContentState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenContentState extends State<MainScreenContent> {
   @override
   void initState() {
     super.initState();
@@ -24,23 +24,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('🏢 Durantax 급여관리 시스템'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.cloud_sync),
-            onPressed: _syncClients,
-            tooltip: '서버 동기화',
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => showDialog(context: context, builder: (_) => const SettingsScreen()),
-            tooltip: '설정',
-          ),
-        ],
-      ),
-      body: Consumer<AppProvider>(
+    return Consumer<AppProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -78,8 +62,7 @@ class _MainScreenState extends State<MainScreen> {
             ],
           );
         },
-      ),
-    );
+      );
   }
 
   Widget _buildTopBar(AppProvider provider) {

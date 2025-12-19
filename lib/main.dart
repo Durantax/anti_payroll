@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/app_provider.dart';
-import 'ui/main_screen.dart';
+import 'ui/home_screen.dart';
 
 void main() {
   runApp(const PayrollApp());
@@ -25,7 +25,7 @@ class PayrollApp extends StatelessWidget {
             elevation: 1,
           ),
         ),
-        home: const MainScreen(),
+        home: const HomeScreen(),
       ),
     );
   }
