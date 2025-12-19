@@ -319,6 +319,63 @@ class ApiService {
     }
   }
 
+  // ========== 급여 결과 저장 ==========
+
+  Future<void> savePayrollResult({
+    required int employeeId,
+    required int clientId,
+    required int year,
+    required int month,
+    required Map<String, dynamic> salaryData,
+    String calculatedBy = 'app',
+  }) async {
+    final response = await http.post(
+      Uri.parse('$_serverUrl/payroll/results/save'),
+      headers: _headers,
+      body: json.encode({
+        'employeeId': employeeId,
+        'clientId': clientId,
+        'year': year,
+        'month': month,
+        'baseSalary': salaryData['baseSalary'] ?? 0,
+        'overtimeAllowance': salaryData['overtimePay'] ?? 0,
+        'nightAllowance': salaryData['nightPay'] ?? 0,
+        'holidayAllowance': salaryData['holidayPay'] ?? 0,
+        'weeklyHolidayPay': salaryData['weeklyHolidayPay'] ?? 0,
+        'bonus': salaryData['bonus'] ?? 0,
+        'additionalAllowance1Name': salaryData['additionalPay1Name'],
+        'additionalAllowance1Amount': salaryData['additionalPay1'] ?? 0,
+        'additionalAllowance2Name': salaryData['additionalPay2Name'],
+        'additionalAllowance2Amount': salaryData['additionalPay2'] ?? 0,
+        'totalPayment': salaryData['totalPayment'] ?? 0,
+        'nationalPension': salaryData['nationalPension'] ?? 0,
+        'healthInsurance': salaryData['healthInsurance'] ?? 0,
+        'longTermCare': salaryData['longTermCare'] ?? 0,
+        'employmentInsurance': salaryData['employmentInsurance'] ?? 0,
+        'incomeTax': salaryData['incomeTax'] ?? 0,
+        'localIncomeTax': salaryData['localIncomeTax'] ?? 0,
+        'additionalDeduction1Name': salaryData['additionalDeduct1Name'],
+        'additionalDeduction1Amount': salaryData['additionalDeduct1'] ?? 0,
+        'additionalDeduction2Name': salaryData['additionalDeduct2Name'],
+        'additionalDeduction2Amount': salaryData['additionalDeduct2'] ?? 0,
+        'totalDeduction': salaryData['totalDeduction'] ?? 0,
+        'netPay': salaryData['netPayment'] ?? 0,
+        'normalHours': salaryData['normalHours'],
+        'overtimeHours': salaryData['overtimeHours'],
+        'nightHours': salaryData['nightHours'],
+        'holidayHours': salaryData['holidayHours'],
+        'attendanceWeeks': salaryData['weekCount'],
+        'paymentFormulas': salaryData['paymentFormulas'] ?? {},
+        'deductionFormulas': salaryData['deductionFormulas'] ?? {},
+        'calculatedBy': calculatedBy,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('급여 결과 저장 실패: ${response.statusCode}');
+    }
+  }
+
   // ========== 급여 마감 ==========
 
   Future<Map<String, dynamic>> getConfirmationStatus({

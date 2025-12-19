@@ -17,7 +17,8 @@ class AppProvider with ChangeNotifier {
   Map<int, List<WorkerModel>> _workersByClient = {};
   Map<int, Map<int, MonthlyData>> _monthlyDataByWorker = {};
   Map<int, SalaryResult> _salaryResults = {};
-  Map<int, bool> _workerFinalizedStatus = {}; // 직원별 마감 상태 (workerId -> isFin alized)
+  Map<int, bool> _workerFinalizedStatus = {}; // 직원별 마감 상태 (workerId -> isConfirmed)
+  Map<int, int> _payrollResultIds = {}; // 직원별 PayrollResults의 resultId (workerId -> resultId)
   
   SmtpConfig? _smtpConfig;
   AppSettings? _appSettings;
@@ -356,14 +357,19 @@ class AppProvider with ChangeNotifier {
       );
 
       _workerFinalizedStatus.clear();
+      _payrollResultIds.clear();
       
       final employees = status['employees'] as List?;
       if (employees != null) {
         for (var emp in employees) {
           final employeeId = emp['employeeId'] as int?;
+          final resultId = emp['resultId'] as int?;
           final isConfirmed = emp['isConfirmed'] as bool? ?? false;
           if (employeeId != null) {
             _workerFinalizedStatus[employeeId] = isConfirmed;
+            if (resultId != null) {
+              _payrollResultIds[employeeId] = resultId;
+            }
           }
         }
       }
@@ -382,19 +388,33 @@ class AppProvider with ChangeNotifier {
   Future<void> toggleWorkerFinalized(int workerId) async {
     final currentStatus = _workerFinalizedStatus[workerId] ?? false;
     final newStatus = !currentStatus;
+    final resultId = _payrollResultIds[workerId];
+
+    // resultId가 없으면 서버에 급여 결과가 저장되지 않은 것
+    if (resultId == null) {
+      _setError('급여 결과가 아직 저장되지 않았습니다. 월별 데이터를 입력하고 급여를 계산해주세요.');
+      return;
+    }
 
     try {
-      // 서버 마감 상태는 PayrollResults 테이블 기반이므로
-      // 여기서는 로컬 상태만 토글 (실제 마감은 서버에 급여 결과가 저장되어야 함)
+      // 낙관적 업데이트 (UI 먼저 변경)
       _workerFinalizedStatus[workerId] = newStatus;
       notifyListeners();
-      
-      // TODO: 서버에 PayrollResults가 저장되어 있다면 confirm/unconfirm API 호출
+
+      // 서버에 마감/마감취소 API 호출
+      if (newStatus) {
+        await _apiService.confirmPayrollResult(resultId: resultId);
+      } else {
+        await _apiService.unconfirmPayrollResult(resultId);
+      }
+
+      _setError(null);
     } catch (e) {
       print('마감 상태 변경 실패: $e');
       // 실패 시 원래 상태로 복구
       _workerFinalizedStatus[workerId] = currentStatus;
       notifyListeners();
+      _setError('마감 상태 변경 실패: $e');
       rethrow;
     }
   }
@@ -449,6 +469,60 @@ class AppProvider with ChangeNotifier {
     );
 
     _salaryResults[workerId] = result;
+    
+    // 서버에 급여 결과 자동 저장 (백그라운드)
+    _savePayrollResultToServer(workerId, result, monthlyData);
+  }
+
+  Future<void> _savePayrollResultToServer(int workerId, SalaryResult result, MonthlyData monthlyData) async {
+    if (_selectedClient == null) return;
+
+    try {
+      await _apiService.savePayrollResult(
+        employeeId: workerId,
+        clientId: _selectedClient!.id,
+        year: selectedYear,
+        month: selectedMonth,
+        salaryData: {
+          'baseSalary': result.baseSalary,
+          'overtimePay': result.overtimePay,
+          'nightPay': result.nightPay,
+          'holidayPay': result.holidayPay,
+          'weeklyHolidayPay': result.weeklyHolidayPay,
+          'bonus': result.bonus,
+          'additionalPay1': result.additionalPay1,
+          'additionalPay1Name': result.additionalPay1Name,
+          'additionalPay2': result.additionalPay2,
+          'additionalPay2Name': result.additionalPay2Name,
+          'totalPayment': result.totalPayment,
+          'nationalPension': result.nationalPension,
+          'healthInsurance': result.healthInsurance,
+          'longTermCare': result.longTermCare,
+          'employmentInsurance': result.employmentInsurance,
+          'incomeTax': result.incomeTax,
+          'localIncomeTax': result.localIncomeTax,
+          'additionalDeduct1': result.additionalDeduct1,
+          'additionalDeduct1Name': result.additionalDeduct1Name,
+          'additionalDeduct2': result.additionalDeduct2,
+          'additionalDeduct2Name': result.additionalDeduct2Name,
+          'totalDeduction': result.totalDeduction,
+          'netPayment': result.netPayment,
+          'normalHours': monthlyData.normalHours,
+          'overtimeHours': monthlyData.overtimeHours,
+          'nightHours': monthlyData.nightHours,
+          'holidayHours': monthlyData.holidayHours,
+          'weekCount': monthlyData.weekCount,
+          'paymentFormulas': {},
+          'deductionFormulas': {},
+        },
+      );
+      
+      // 저장 후 마감 상태 갱신
+      await loadConfirmationStatus();
+    } catch (e) {
+      print('급여 결과 서버 저장 실패: $e');
+      // 에러가 나도 로컬 계산은 유지 (사용자에게 에러 표시하지 않음)
+    }
   }
 
   void _recalculateAllSalaries() {
