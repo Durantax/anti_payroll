@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' hide Border;
 import 'package:csv/csv.dart';
 import 'package:pdf/pdf.dart';
@@ -78,8 +79,21 @@ class FileEmailService {
     }
 
     final bytes = excel.encode();
-    final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/${clientName}_급여대장_템플릿.xlsx');
+    
+    // 사용자가 저장 위치 선택
+    final fileName = '${clientName}_급여대장_템플릿.xlsx';
+    final outputPath = await FilePicker.platform.saveFile(
+      dialogTitle: '템플릿 저장',
+      fileName: fileName,
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+    );
+
+    if (outputPath == null) {
+      throw Exception('파일 저장이 취소되었습니다.');
+    }
+
+    final file = File(outputPath);
     await file.writeAsBytes(bytes!);
 
     // Windows 탐색기에서 열기
@@ -220,8 +234,21 @@ class FileEmailService {
     }
 
     final csv = const ListToCsvConverter().convert(rows);
-    final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/${clientName}_${year}년${month}월_급여대장.csv');
+    
+    // 사용자가 저장 위치 선택
+    final fileName = '${clientName}_${year}년${month}월_급여대장.csv';
+    final outputPath = await FilePicker.platform.saveFile(
+      dialogTitle: 'CSV 파일 저장',
+      fileName: fileName,
+      type: FileType.custom,
+      allowedExtensions: ['csv'],
+    );
+
+    if (outputPath == null) {
+      throw Exception('파일 저장이 취소되었습니다.');
+    }
+
+    final file = File(outputPath);
     await file.writeAsString('\uFEFF$csv'); // UTF-8 BOM
 
     if (Platform.isWindows) {
@@ -320,9 +347,21 @@ class FileEmailService {
     );
 
     final pdfBytes = await pdf.save();
-    final directory = await getApplicationDocumentsDirectory();
+    
+    // 사용자가 저장 위치 선택
     final fileName = '${clientName}_${year}년${month}월_급여대장.pdf';
-    final file = File('${directory.path}/$fileName');
+    final outputPath = await FilePicker.platform.saveFile(
+      dialogTitle: '급여대장 PDF 저장',
+      fileName: fileName,
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+    );
+
+    if (outputPath == null) {
+      throw Exception('파일 저장이 취소되었습니다.');
+    }
+
+    final file = File(outputPath);
     await file.writeAsBytes(pdfBytes);
 
     // Windows 기본 뷰어로 열기
@@ -457,9 +496,20 @@ class FileEmailService {
       month: month,
     );
 
-    final directory = await getApplicationDocumentsDirectory();
+    // 사용자가 저장 위치 선택
     final fileName = '${client.name}_${result.workerName}_${year}년${month}월_급여명세서.pdf';
-    final file = File('${directory.path}/$fileName');
+    final outputPath = await FilePicker.platform.saveFile(
+      dialogTitle: '급여명세서 저장',
+      fileName: fileName,
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+    );
+
+    if (outputPath == null) {
+      throw Exception('파일 저장이 취소되었습니다.');
+    }
+
+    final file = File(outputPath);
     await file.writeAsBytes(pdfBytes);
 
     // Windows 기본 뷰어로 열기
