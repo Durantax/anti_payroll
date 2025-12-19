@@ -57,30 +57,7 @@ class FileEmailService {
           .value = TextCellValue(headers[i]);
     }
 
-    // 샘플 데이터 (추가수당/공제는 기본값 0)
-    final sampleRow = [
-      '홍길동',
-      '900101',
-      '3000000',
-      '14500',
-      '40',
-      '209',
-      '0',
-      '0',
-      '0',
-      '4',
-      '0',
-      '0',
-      '0',
-      '0',
-      '0',
-    ];
-
-    for (var i = 0; i < sampleRow.length; i++) {
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 4))
-          .value = TextCellValue(sampleRow[i]);
-    }
+    // 샘플 데이터 제거 - 사용자가 직접 입력하도록 빈 행으로 둠
 
     final bytes = excel.encode();
     
