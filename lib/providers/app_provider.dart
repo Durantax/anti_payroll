@@ -181,6 +181,7 @@ class AppProvider with ChangeNotifier {
     if (client != null) {
       loadWorkers(client.id);
       loadSendStatus();
+      loadConfirmationStatus(); // 마감 상태 로드
     }
   }
 
@@ -193,6 +194,7 @@ class AppProvider with ChangeNotifier {
       // 새로운 월의 데이터 로드
       _loadMonthlyDataForAllWorkers();
       loadSendStatus();
+      loadConfirmationStatus(); // 마감 상태 로드
     }
   }
 
@@ -342,13 +344,59 @@ class AppProvider with ChangeNotifier {
 
   // ========== 마감 상태 관리 ==========
 
+  // 서버에서 마감 현황 로드
+  Future<void> loadConfirmationStatus() async {
+    if (_selectedClient == null) return;
+
+    try {
+      final status = await _apiService.getConfirmationStatus(
+        clientId: _selectedClient!.id,
+        year: selectedYear,
+        month: selectedMonth,
+      );
+
+      _workerFinalizedStatus.clear();
+      
+      final employees = status['employees'] as List?;
+      if (employees != null) {
+        for (var emp in employees) {
+          final employeeId = emp['employeeId'] as int?;
+          final isConfirmed = emp['isConfirmed'] as bool? ?? false;
+          if (employeeId != null) {
+            _workerFinalizedStatus[employeeId] = isConfirmed;
+          }
+        }
+      }
+
+      notifyListeners();
+    } catch (e) {
+      print('마감 현황 로드 실패: $e');
+      // 에러 시 로컬 상태 유지
+    }
+  }
+
   bool isWorkerFinalized(int workerId) {
     return _workerFinalizedStatus[workerId] ?? false;
   }
 
-  void toggleWorkerFinalized(int workerId) {
-    _workerFinalizedStatus[workerId] = !(_workerFinalizedStatus[workerId] ?? false);
-    notifyListeners();
+  Future<void> toggleWorkerFinalized(int workerId) async {
+    final currentStatus = _workerFinalizedStatus[workerId] ?? false;
+    final newStatus = !currentStatus;
+
+    try {
+      // 서버 마감 상태는 PayrollResults 테이블 기반이므로
+      // 여기서는 로컬 상태만 토글 (실제 마감은 서버에 급여 결과가 저장되어야 함)
+      _workerFinalizedStatus[workerId] = newStatus;
+      notifyListeners();
+      
+      // TODO: 서버에 PayrollResults가 저장되어 있다면 confirm/unconfirm API 호출
+    } catch (e) {
+      print('마감 상태 변경 실패: $e');
+      // 실패 시 원래 상태로 복구
+      _workerFinalizedStatus[workerId] = currentStatus;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   List<int> get finalizedWorkerIds {
@@ -484,7 +532,11 @@ class AppProvider with ChangeNotifier {
 
     try {
       _setLoading(true);
-      await FileEmailService.generateExcelTemplate(_selectedClient!.name);
+      // 현재 거래처의 직원 목록을 템플릿에 포함
+      await FileEmailService.generateExcelTemplate(
+        _selectedClient!.name,
+        workers: currentWorkers,
+      );
       _setError(null);
     } catch (e) {
       _setError('템플릿 생성 실패: $e');

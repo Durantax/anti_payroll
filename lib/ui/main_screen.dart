@@ -251,7 +251,7 @@ class _MainScreenContentState extends State<MainScreenContent> {
               DataCell(
                 Checkbox(
                   value: isFinalized,
-                  onChanged: (value) => provider.toggleWorkerFinalized(worker.id!),
+                  onChanged: (value) async => await provider.toggleWorkerFinalized(worker.id!),
                 ),
               ),
               DataCell(Text(worker.name)),

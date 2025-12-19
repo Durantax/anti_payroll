@@ -318,4 +318,72 @@ class ApiService {
       return false;
     }
   }
+
+  // ========== 급여 마감 ==========
+
+  Future<Map<String, dynamic>> getConfirmationStatus({
+    required int clientId,
+    required int year,
+    required int month,
+  }) async {
+    final response = await http.get(
+      Uri.parse('$_serverUrl/payroll/results/client/$clientId/confirmation-status?year=$year&month=$month'),
+      headers: _headers,
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(utf8.decode(response.bodyBytes));
+    } else {
+      throw Exception('마감 현황 조회 실패: ${response.statusCode}');
+    }
+  }
+
+  Future<void> confirmPayrollResult({
+    required int resultId,
+    String confirmedBy = 'admin',
+  }) async {
+    final response = await http.patch(
+      Uri.parse('$_serverUrl/payroll/results/$resultId/confirm'),
+      headers: _headers,
+      body: json.encode({'confirmedBy': confirmedBy}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('급여 마감 실패: ${response.statusCode}');
+    }
+  }
+
+  Future<void> unconfirmPayrollResult(int resultId) async {
+    final response = await http.patch(
+      Uri.parse('$_serverUrl/payroll/results/$resultId/unconfirm'),
+      headers: _headers,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('마감 취소 실패: ${response.statusCode}');
+    }
+  }
+
+  Future<Map<String, dynamic>> confirmAllPayrollResults({
+    required int clientId,
+    required int year,
+    required int month,
+    String confirmedBy = 'admin',
+  }) async {
+    final response = await http.post(
+      Uri.parse('$_serverUrl/payroll/results/client/$clientId/confirm-all'),
+      headers: _headers,
+      body: json.encode({
+        'year': year,
+        'month': month,
+        'confirmedBy': confirmedBy,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(utf8.decode(response.bodyBytes));
+    } else {
+      throw Exception('일괄 마감 실패: ${response.statusCode}');
+    }
+  }
 }

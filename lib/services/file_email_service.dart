@@ -15,7 +15,10 @@ import '../core/models.dart';
 class FileEmailService {
   // ========== Excel 템플릿 생성 ==========
 
-  static Future<File> generateExcelTemplate(String clientName) async {
+  static Future<File> generateExcelTemplate(
+    String clientName, {
+    List<WorkerModel>? workers,
+  }) async {
     final excel = Excel.createExcel();
     
     // 급여대장 시트 생성
@@ -57,7 +60,37 @@ class FileEmailService {
           .value = TextCellValue(headers[i]);
     }
 
-    // 샘플 데이터 제거 - 사용자가 직접 입력하도록 빈 행으로 둠
+    // 기존 직원 정보 자동 입력
+    if (workers != null && workers.isNotEmpty) {
+      for (var i = 0; i < workers.length; i++) {
+        final worker = workers[i];
+        final rowIndex = 4 + i; // 5행부터 시작
+        
+        final rowData = [
+          worker.name,
+          worker.birthDate,
+          worker.monthlySalary.toString(),
+          worker.hourlyRate.toString(),
+          '40', // 주소정근로시간 (기본 40시간)
+          worker.normalHours.toStringAsFixed(0), // 정상근로시간
+          '0', // 연장
+          '0', // 야간
+          '0', // 휴일
+          '4', // 개근주수
+          '0', // 상여
+          '0', // 추가수당1
+          '0', // 추가수당2
+          '0', // 추가공제1
+          '0', // 추가공제2
+        ];
+        
+        for (var j = 0; j < rowData.length; j++) {
+          sheet
+              .cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: rowIndex))
+              .value = TextCellValue(rowData[j]);
+        }
+      }
+    }
 
     final bytes = excel.encode();
     
