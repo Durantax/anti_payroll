@@ -573,13 +573,16 @@ class AppProvider with ChangeNotifier {
 
         // 신규 직원이면 서버에 저장
         if (existingWorker.id == null || existingWorker.name.isEmpty) {
+          print('신규 직원 생성: ${data['name']} (${data['birthDate']})');
+          
           final newWorker = WorkerModel(
             clientId: _selectedClient!.id,
             name: data['name'] as String,
             birthDate: data['birthDate'] as String,
             phoneNumber: '',
+            email: '', // 추가
             employmentType: 'regular',
-            salaryType: (data['hourlyRate'] as int) > 0 ? 'hourly' : 'monthly',
+            salaryType: (data['hourlyRate'] as int) > 0 ? 'HOURLY' : 'MONTHLY', // 대문자로 수정
             monthlySalary: data['monthlySalary'] as int,
             hourlyRate: data['hourlyRate'] as int,
             normalHours: data['normalHours'] as double,
@@ -594,14 +597,19 @@ class AppProvider with ChangeNotifier {
 
           // 서버에 저장하고 ID 받기
           try {
+            print('서버에 직원 저장 중...');
             final savedWorker = await saveWorker(newWorker);
             workerId = savedWorker.id!;
+            print('저장 성공! Worker ID: $workerId');
           } catch (e) {
-            _setError('직원 저장 실패 (${data['name']}): $e\n생년월일: ${data['birthDate']}');
-            continue; // 다음 직원 처리
+            print('저장 실패: $e');
+            final errorMsg = '직원 저장 실패 (${data['name']}): $e';
+            _setError(errorMsg);
+            rethrow; // 에러를 상위로 전파
           }
         } else {
           workerId = existingWorker.id!;
+          print('기존 직원: ${existingWorker.name} (ID: $workerId)');
         }
 
         // MonthlyData 생성
