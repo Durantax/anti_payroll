@@ -23,6 +23,7 @@ else()
       "Debug" "Profile" "Release")
   endif()
 endif()
+
 # Define settings for the Profile build mode.
 set(CMAKE_EXE_LINKER_FLAGS_PROFILE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
 set(CMAKE_SHARED_LINKER_FLAGS_PROFILE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE}")
@@ -52,11 +53,9 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 
-
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
 include(flutter/generated_plugins.cmake)
-
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can
@@ -86,6 +85,17 @@ if(PLUGIN_BUNDLED_LIBRARIES)
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+# --- Force x64 PDFium to be the final one next to the exe (overwrites x86 if copied earlier) ---
+# The printing plugin may copy a 32-bit pdfium.dll depending on what CMake finds.
+# This ensures the bundled output uses the downloaded x64 pdfium from the build tree.
+install(CODE "
+  execute_process(
+    COMMAND \"${CMAKE_COMMAND}\" -E copy_if_different
+            \"${CMAKE_BINARY_DIR}/pdfium-src/bin/pdfium.dll\"
+            \"${INSTALL_BUNDLE_LIB_DIR}/pdfium.dll\"
+  )
+" COMPONENT Runtime)
 
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/windows/")

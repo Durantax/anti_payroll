@@ -1,0 +1,323 @@
+import 'dart:math';
+import '../core/models.dart';
+import '../core/constants.dart';
+
+class PayrollCalculator {
+  /// 급여 계산 (정규직 / 프리랜서)
+  static SalaryResult calculate({
+    required WorkerModel worker,
+    required MonthlyData monthly,
+    required bool has5OrMoreWorkers,
+  }) {
+    final isFreelancer = worker.employmentType == 'freelance';
+
+    if (isFreelancer) {
+      return _calculateFreelancer(worker: worker, monthly: monthly);
+    } else {
+      return _calculateRegular(
+        worker: worker,
+        monthly: monthly,
+        has5OrMoreWorkers: has5OrMoreWorkers,
+      );
+    }
+  }
+
+  /// 정규직 급여 계산
+  static SalaryResult _calculateRegular({
+    required WorkerModel worker,
+    required MonthlyData monthly,
+    required bool has5OrMoreWorkers,
+  }) {
+    final hourlyRate = worker.hourlyRate;
+    final normalHours = monthly.normalHours;
+
+    // ===== 지급 항목 =====
+
+    // 1. 기본급 (시급 × 정상근로시간)
+    final baseSalary = (hourlyRate * normalHours).round();
+    final baseSalaryFormula = '${formatMoney(hourlyRate)}원 × ${normalHours.toStringAsFixed(0)}시간';
+
+    // 2. 연장수당 (5인 이상 사업장만)
+    int overtimePay = 0;
+    String overtimeFormula = '';
+    if (has5OrMoreWorkers && monthly.overtimeHours > 0) {
+      overtimePay = (hourlyRate * monthly.overtimeHours * AppConstants.overtimeMultiplier).round();
+      overtimeFormula =
+          '${formatMoney(hourlyRate)}원 × ${monthly.overtimeHours.toStringAsFixed(0)}시간 × 1.5';
+    }
+
+    // 3. 야간수당 (5인 이상 사업장만)
+    int nightPay = 0;
+    String nightFormula = '';
+    if (has5OrMoreWorkers && monthly.nightHours > 0) {
+      nightPay = (hourlyRate * monthly.nightHours * AppConstants.nightMultiplier).round();
+      nightFormula =
+          '${formatMoney(hourlyRate)}원 × ${monthly.nightHours.toStringAsFixed(0)}시간 × 0.5';
+    }
+
+    // 4. 휴일수당 (5인 이상 사업장만)
+    int holidayPay = 0;
+    String holidayFormula = '';
+    if (has5OrMoreWorkers && monthly.holidayHours > 0) {
+      holidayPay = (hourlyRate * monthly.holidayHours * AppConstants.holidayMultiplier).round();
+      holidayFormula =
+          '${formatMoney(hourlyRate)}원 × ${monthly.holidayHours.toStringAsFixed(0)}시간 × 1.5';
+    }
+
+    // 5. 주휴수당 (개근주수 × 시급 × 주소정근로시간)
+    int weeklyHolidayPay = 0;
+    String weeklyHolidayFormula = '';
+    if (monthly.weekCount > 0) {
+      weeklyHolidayPay = (hourlyRate * monthly.weeklyHours * monthly.weekCount).round();
+      weeklyHolidayFormula =
+          '${formatMoney(hourlyRate)}원 × ${monthly.weeklyHours.toStringAsFixed(0)}시간 × ${monthly.weekCount}주';
+    }
+
+    // 6. 상여금
+    final bonus = monthly.bonus;
+
+    // 7. 추가수당
+    final additionalPay1 = monthly.additionalPay1;
+    final additionalPay1Name = monthly.additionalPay1Name;
+    final additionalPay2 = monthly.additionalPay2;
+    final additionalPay2Name = monthly.additionalPay2Name;
+    final additionalPay3 = monthly.additionalPay3;
+    final additionalPay3Name = monthly.additionalPay3Name;
+
+    // ===== 지급총액 =====
+    final totalPayment = baseSalary +
+        overtimePay +
+        nightPay +
+        holidayPay +
+        weeklyHolidayPay +
+        bonus +
+        additionalPay1 +
+        additionalPay2 +
+        additionalPay3;
+
+    // ===== 공제 항목 =====
+
+    // 1. 국민연금 (4.5%)
+    int nationalPension = 0;
+    String pensionFormula = '';
+    if (worker.hasNationalPension) {
+      final pensionBase = worker.pensionInsurableWage ?? baseSalary;
+      nationalPension = (pensionBase * AppConstants.pensionRate).round();
+      pensionFormula = '${formatMoney(pensionBase)}원 × 4.5%';
+    }
+
+    // 2. 건강보험 (3.545%)
+    int healthInsurance = 0;
+    String healthFormula = '';
+    if (worker.hasHealthInsurance) {
+      final healthBase = worker.healthInsuranceBasis == 'salary'
+          ? baseSalary
+          : (worker.pensionInsurableWage ?? baseSalary);
+      healthInsurance = (healthBase * AppConstants.healthRate).round();
+      healthFormula = '${formatMoney(healthBase)}원 × 3.545%';
+    }
+
+    // 3. 장기요양 (12.95%)
+    int longTermCare = 0;
+    String longTermCareFormula = '';
+    if (worker.hasHealthInsurance) {
+      longTermCare = (healthInsurance * AppConstants.longTermCareRate).round();
+      longTermCareFormula = '${formatMoney(healthInsurance)}원 × 12.95%';
+    }
+
+    // 4. 고용보험 (0.9%)
+    int employmentInsurance = 0;
+    String employmentFormula = '';
+    if (worker.hasEmploymentInsurance) {
+      employmentInsurance = (baseSalary * AppConstants.employmentRate).round();
+      employmentFormula = '${formatMoney(baseSalary)}원 × 0.9%';
+    }
+
+    // 5. 소득세 (3.3% - 1의 자리 절사)
+    final taxableIncome = totalPayment;
+    final incomeTaxRaw = (taxableIncome * AppConstants.incomeTaxRate).round();
+    final incomeTax = (incomeTaxRaw ~/ 10) * 10; // 1의 자리 절사
+    final incomeTaxFormula = '${formatMoney(taxableIncome)}원 × 3.3%';
+
+    // 6. 지방소득세 (소득세의 10% - 1의 자리 절사)
+    final localIncomeTaxRaw = (incomeTax * AppConstants.localTaxRate).round();
+    final localIncomeTax = (localIncomeTaxRaw ~/ 10) * 10; // 1의 자리 절사
+    final localTaxFormula = '${formatMoney(incomeTax)}원 × 10%';
+
+    // 7. 추가공제
+    final additionalDeduct1 = monthly.additionalDeduct1;
+    final additionalDeduct1Name = monthly.additionalDeduct1Name;
+    final additionalDeduct2 = monthly.additionalDeduct2;
+    final additionalDeduct2Name = monthly.additionalDeduct2Name;
+    final additionalDeduct3 = monthly.additionalDeduct3;
+    final additionalDeduct3Name = monthly.additionalDeduct3Name;
+
+    return SalaryResult(
+      workerName: worker.name,
+      birthDate: worker.birthDate,
+      employmentType: worker.employmentType,
+      baseSalary: baseSalary,
+      overtimePay: overtimePay,
+      nightPay: nightPay,
+      holidayPay: holidayPay,
+      weeklyHolidayPay: weeklyHolidayPay,
+      bonus: bonus,
+      additionalPay1: additionalPay1,
+      additionalPay1Name: additionalPay1Name,
+      additionalPay2: additionalPay2,
+      additionalPay2Name: additionalPay2Name,
+      additionalPay3: additionalPay3,
+      additionalPay3Name: additionalPay3Name,
+      nationalPension: nationalPension,
+      healthInsurance: healthInsurance,
+      longTermCare: longTermCare,
+      employmentInsurance: employmentInsurance,
+      incomeTax: incomeTax,
+      localIncomeTax: localIncomeTax,
+      additionalDeduct1: additionalDeduct1,
+      additionalDeduct1Name: additionalDeduct1Name,
+      additionalDeduct2: additionalDeduct2,
+      additionalDeduct2Name: additionalDeduct2Name,
+      additionalDeduct3: additionalDeduct3,
+      additionalDeduct3Name: additionalDeduct3Name,
+      baseSalaryFormula: baseSalaryFormula,
+      overtimeFormula: overtimeFormula,
+      nightFormula: nightFormula,
+      holidayFormula: holidayFormula,
+      weeklyHolidayFormula: weeklyHolidayFormula,
+      pensionFormula: pensionFormula,
+      healthFormula: healthFormula,
+      longTermCareFormula: longTermCareFormula,
+      employmentFormula: employmentFormula,
+      incomeTaxFormula: incomeTaxFormula,
+      localTaxFormula: localTaxFormula,
+    );
+  }
+
+  /// 프리랜서 급여 계산
+  static SalaryResult _calculateFreelancer({
+    required WorkerModel worker,
+    required MonthlyData monthly,
+  }) {
+    final hourlyRate = worker.hourlyRate;
+    final normalHours = monthly.normalHours;
+
+    // ===== 지급 항목 =====
+
+    // 1. 기본급 (시급 × 정상근로시간)
+    final baseSalary = (hourlyRate * normalHours).round();
+    final baseSalaryFormula = '${formatMoney(hourlyRate)}원 × ${normalHours.toStringAsFixed(0)}시간';
+
+    // 2. 주휴수당 (개근주수 × 시급 × 주소정근로시간)
+    int weeklyHolidayPay = 0;
+    String weeklyHolidayFormula = '';
+    if (monthly.weekCount > 0) {
+      weeklyHolidayPay = (hourlyRate * monthly.weeklyHours * monthly.weekCount).round();
+      weeklyHolidayFormula =
+          '${formatMoney(hourlyRate)}원 × ${monthly.weeklyHours.toStringAsFixed(0)}시간 × ${monthly.weekCount}주';
+    }
+
+    // 3. 상여금
+    final bonus = monthly.bonus;
+
+    // 4. 추가수당
+    final additionalPay1 = monthly.additionalPay1;
+    final additionalPay1Name = monthly.additionalPay1Name;
+    final additionalPay2 = monthly.additionalPay2;
+    final additionalPay2Name = monthly.additionalPay2Name;
+    final additionalPay3 = monthly.additionalPay3;
+    final additionalPay3Name = monthly.additionalPay3Name;
+
+    // ===== 지급총액 =====
+    final totalPayment = baseSalary +
+        weeklyHolidayPay +
+        bonus +
+        additionalPay1 +
+        additionalPay2 +
+        additionalPay3;
+
+    // ===== 공제 항목 =====
+
+    // 1. 소득세 (3.3% - 1의 자리 절사)
+    final incomeTaxRaw = (totalPayment * AppConstants.incomeTaxRate).round();
+    final incomeTax = (incomeTaxRaw ~/ 10) * 10; // 1의 자리 절사
+    final incomeTaxFormula = '${formatMoney(totalPayment)}원 × 3.3%';
+
+    // 프리랜서는 지방소득세 없음 (3.3%에 포함)
+    final localIncomeTax = 0;
+    final localTaxFormula = '';
+
+    // 2. 추가공제
+    final additionalDeduct1 = monthly.additionalDeduct1;
+    final additionalDeduct1Name = monthly.additionalDeduct1Name;
+    final additionalDeduct2 = monthly.additionalDeduct2;
+    final additionalDeduct2Name = monthly.additionalDeduct2Name;
+    final additionalDeduct3 = monthly.additionalDeduct3;
+    final additionalDeduct3Name = monthly.additionalDeduct3Name;
+
+    return SalaryResult(
+      workerName: worker.name,
+      birthDate: worker.birthDate,
+      employmentType: worker.employmentType,
+      baseSalary: baseSalary,
+      overtimePay: 0,
+      nightPay: 0,
+      holidayPay: 0,
+      weeklyHolidayPay: weeklyHolidayPay,
+      bonus: bonus,
+      additionalPay1: additionalPay1,
+      additionalPay1Name: additionalPay1Name,
+      additionalPay2: additionalPay2,
+      additionalPay2Name: additionalPay2Name,
+      additionalPay3: additionalPay3,
+      additionalPay3Name: additionalPay3Name,
+      nationalPension: 0,
+      healthInsurance: 0,
+      longTermCare: 0,
+      employmentInsurance: 0,
+      incomeTax: incomeTax,
+      localIncomeTax: localIncomeTax,
+      additionalDeduct1: additionalDeduct1,
+      additionalDeduct1Name: additionalDeduct1Name,
+      additionalDeduct2: additionalDeduct2,
+      additionalDeduct2Name: additionalDeduct2Name,
+      additionalDeduct3: additionalDeduct3,
+      additionalDeduct3Name: additionalDeduct3Name,
+      baseSalaryFormula: baseSalaryFormula,
+      overtimeFormula: '',
+      nightFormula: '',
+      holidayFormula: '',
+      weeklyHolidayFormula: weeklyHolidayFormula,
+      pensionFormula: '',
+      healthFormula: '',
+      longTermCareFormula: '',
+      employmentFormula: '',
+      incomeTaxFormula: incomeTaxFormula,
+      localTaxFormula: localTaxFormula,
+    );
+  }
+
+  /// 시급 자동 계산 (월급 → 시급)
+  static int calculateHourlyRate({
+    required int monthlySalary,
+    required double weeklyHours,
+  }) {
+    if (monthlySalary == 0 || weeklyHours == 0) return 0;
+    
+    // 월급 ÷ (주당시간 × 4.345주)
+    final hourlyRate = monthlySalary / (weeklyHours * AppConstants.weeksPerMonth);
+    return hourlyRate.round();
+  }
+
+  /// 월급 자동 계산 (시급 → 월급)
+  static int calculateMonthlySalary({
+    required int hourlyRate,
+    required double weeklyHours,
+  }) {
+    if (hourlyRate == 0 || weeklyHours == 0) return 0;
+    
+    // 시급 × 주당시간 × 4.345주
+    final monthlySalary = hourlyRate * weeklyHours * AppConstants.weeksPerMonth;
+    return monthlySalary.round();
+  }
+}

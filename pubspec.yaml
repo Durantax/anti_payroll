@@ -1,5 +1,5 @@
-name: payroll_app
-description: 세무회계 두란 급여 관리 프로그램
+name: payroll
+description: Durantax 급여관리 및 명세서 자동발송 시스템
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,44 +9,35 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # =========================
-  # 상태 관리 (필수)
-  # =========================
+  
+  # 상태관리
   provider: ^6.1.1
-
-  # =========================
-  # 데이터베이스 (SQLite)
-  # =========================
-  sqflite: ^2.3.0
-  sqflite_common_ffi: ^2.3.0  # 윈도우/맥 데스크톱용
-  path: ^1.8.3
-
-  # =========================
-  # 기본 유틸 / 데이터 처리
-  # =========================
+  
+  # HTTP 통신
+  http: ^1.1.0
+  
+  # 날짜/숫자 포맷
   intl: ^0.19.0
-  excel: ^4.0.6
-  csv: ^6.0.0
+  
+  # 파일 처리
+  path_provider: ^2.1.1
   file_picker: ^6.1.1
-  path_provider: ^2.1.2
-
-  # =========================
-  # PDF / 출력
-  # =========================
-  pdf: ^3.10.4
-  printing: ^5.11.0
-
-  # =========================
-  # 메일 발송
-  # =========================
-  mailer: ^6.0.0
-
-  # =========================
-  # Desktop UI
-  # =========================
-  desktop_drop: ^0.7.0
-  dotted_border: ^2.1.0
+  
+  # Excel
+  excel: ^4.0.2
+  
+  # CSV
+  csv: ^5.1.1
+  
+  # PDF
+  pdf: ^3.10.7
+  printing: ^5.11.1
+  
+  # 이메일
+  mailer: ^6.0.1
+  
+  # PDF 암호화
+  archive: ^3.4.9
 
 dev_dependencies:
   flutter_test:
@@ -55,6 +46,13 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  
   assets:
-    # 프로젝트 루트에 assets/fonts 폴더를 만들고 폰트 파일을 넣어주세요.
-    - assets/fonts/NanumGothic.ttf
+    - assets/fonts/
+  
+  fonts:
+    - family: NanumGothic
+      fonts:
+        - asset: assets/fonts/NanumGothic-Regular.ttf
+        - asset: assets/fonts/NanumGothic-Bold.ttf
+          weight: 700
