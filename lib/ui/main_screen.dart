@@ -103,6 +103,36 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
           const SizedBox(width: 16),
+          if (provider.selectedClient != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.blue.shade300),
+                borderRadius: BorderRadius.circular(4),
+                color: Colors.blue.shade50,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '📅 발송일정',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade700),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '명세서: ${provider.selectedClient!.slipSendDay ?? "-"}일',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  Text(
+                    '급여대장: ${provider.selectedClient!.registerSendDay ?? "-"}일',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+          ],
           SizedBox(
             width: 120,
             child: DropdownButtonFormField<int>(
