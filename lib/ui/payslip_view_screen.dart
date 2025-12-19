@@ -106,17 +106,17 @@ class PayslipViewScreen extends StatelessWidget {
                   context,
                   '지급 항목',
                   [
-                    _AmountRow('기본급', salaryResult.baseSalary),
+                    _AmountRow('기본급', salaryResult.baseSalary, salaryResult.baseSalaryFormula),
                     if (salaryResult.overtimePay > 0)
-                      _AmountRow('연장수당', salaryResult.overtimePay),
+                      _AmountRow('연장수당', salaryResult.overtimePay, salaryResult.overtimeFormula),
                     if (salaryResult.nightPay > 0)
-                      _AmountRow('야간수당', salaryResult.nightPay),
+                      _AmountRow('야간수당', salaryResult.nightPay, salaryResult.nightFormula),
                     if (salaryResult.holidayPay > 0)
-                      _AmountRow('휴일수당', salaryResult.holidayPay),
+                      _AmountRow('휴일수당', salaryResult.holidayPay, salaryResult.holidayFormula),
                     if (salaryResult.weeklyHolidayPay > 0)
-                      _AmountRow('주휴수당', salaryResult.weeklyHolidayPay),
+                      _AmountRow('주휴수당', salaryResult.weeklyHolidayPay, salaryResult.weeklyHolidayFormula),
                     if (salaryResult.bonus > 0)
-                      _AmountRow('상여금', salaryResult.bonus),
+                      _AmountRow('상여금', salaryResult.bonus, ''),
                   ],
                   salaryResult.totalPayment,
                   Colors.blue,
@@ -129,17 +129,17 @@ class PayslipViewScreen extends StatelessWidget {
                   '공제 항목',
                   [
                     if (salaryResult.nationalPension > 0)
-                      _AmountRow('국민연금', salaryResult.nationalPension),
+                      _AmountRow('국민연금', salaryResult.nationalPension, salaryResult.pensionFormula),
                     if (salaryResult.healthInsurance > 0)
-                      _AmountRow('건강보험', salaryResult.healthInsurance),
+                      _AmountRow('건강보험', salaryResult.healthInsurance, salaryResult.healthFormula),
                     if (salaryResult.longTermCare > 0)
-                      _AmountRow('장기요양', salaryResult.longTermCare),
+                      _AmountRow('장기요양', salaryResult.longTermCare, salaryResult.longTermCareFormula),
                     if (salaryResult.employmentInsurance > 0)
-                      _AmountRow('고용보험', salaryResult.employmentInsurance),
+                      _AmountRow('고용보험', salaryResult.employmentInsurance, salaryResult.employmentFormula),
                     if (salaryResult.incomeTax > 0)
-                      _AmountRow('소득세', salaryResult.incomeTax),
+                      _AmountRow('소득세', salaryResult.incomeTax, salaryResult.incomeTaxFormula),
                     if (salaryResult.localIncomeTax > 0)
-                      _AmountRow('지방소득세', salaryResult.localIncomeTax),
+                      _AmountRow('지방소득세', salaryResult.localIncomeTax, salaryResult.localTaxFormula),
                   ],
                   salaryResult.totalDeduction,
                   Colors.red,
@@ -269,14 +269,30 @@ class PayslipViewScreen extends StatelessWidget {
                         ? null
                         : Border(bottom: BorderSide(color: Colors.grey.shade200)),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(row.label),
-                      Text(
-                        '${_formatNumber(row.amount)}원',
-                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(row.label),
+                          Text(
+                            '${_formatNumber(row.amount)}원',
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ],
                       ),
+                      if (row.formula.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            '계산: ${row.formula}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 );
@@ -392,6 +408,7 @@ class _InfoRow {
 class _AmountRow {
   final String label;
   final int amount;
+  final String formula;
 
-  _AmountRow(this.label, this.amount);
+  _AmountRow(this.label, this.amount, this.formula);
 }

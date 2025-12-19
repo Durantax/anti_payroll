@@ -28,14 +28,36 @@ class PayrollCalculator {
     required MonthlyData monthly,
     required bool has5OrMoreWorkers,
   }) {
-    final hourlyRate = worker.hourlyRate;
+    // ===== 통상시급 계산 =====
+    // 월급제의 경우: 월급 ÷ (주소정근로시간 × 4.345주)
+    // 시급제의 경우: 입력된 시급 사용
+    int hourlyRate = worker.hourlyRate;
+    String hourlyRateSource = '입력된 시급';
+    
+    if (worker.salaryType == 'MONTHLY' && worker.monthlySalary > 0) {
+      // 월급제: 통상시급 자동 계산
+      final weeklyHours = monthly.weeklyHours > 0 ? monthly.weeklyHours : 40.0;
+      hourlyRate = (worker.monthlySalary / (weeklyHours * AppConstants.weeksPerMonth)).round();
+      hourlyRateSource = '${formatMoney(worker.monthlySalary)}원 ÷ (${weeklyHours}시간 × 4.345주)';
+    }
+    
     final normalHours = monthly.normalHours;
 
     // ===== 지급 항목 =====
 
-    // 1. 기본급 (시급 × 정상근로시간)
-    final baseSalary = (hourlyRate * normalHours).round();
-    final baseSalaryFormula = '${formatMoney(hourlyRate)}원 × ${normalHours.toStringAsFixed(0)}시간';
+    // 1. 기본급
+    // 월급제: 월급 그대로 사용
+    // 시급제: 시급 × 정상근로시간
+    int baseSalary;
+    String baseSalaryFormula;
+    
+    if (worker.salaryType == 'MONTHLY' && worker.monthlySalary > 0) {
+      baseSalary = worker.monthlySalary;
+      baseSalaryFormula = '월급 ${formatMoney(worker.monthlySalary)}원';
+    } else {
+      baseSalary = (hourlyRate * normalHours).round();
+      baseSalaryFormula = '${formatMoney(hourlyRate)}원 × ${normalHours.toStringAsFixed(0)}시간';
+    }
 
     // 2. 연장수당 (5인 이상 사업장만)
     int overtimePay = 0;
