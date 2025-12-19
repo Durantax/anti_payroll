@@ -48,9 +48,24 @@ class EmployeeManagementScreen extends StatelessWidget {
                           return TextFormField(
                             controller: controller,
                             focusNode: focusNode,
-                            decoration: const InputDecoration(
+                            onTap: () {
+                              // 클릭 시 기존 텍스트 전체 선택 (쉽게 지우기 위해)
+                              controller.selection = TextSelection(
+                                baseOffset: 0,
+                                extentOffset: controller.text.length,
+                              );
+                            },
+                            decoration: InputDecoration(
                               hintText: '거래처명 또는 사업자번호 검색',
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
+                              suffixIcon: IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  controller.clear();
+                                  focusNode.unfocus();
+                                },
+                                tooltip: '지우기',
+                              ),
                             ),
                           );
                         },

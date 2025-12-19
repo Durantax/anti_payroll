@@ -17,6 +17,7 @@ class FileEmailService {
 
   static Future<File> generateExcelTemplate(
     String clientName, {
+    String? bizId,
     List<WorkerModel>? workers,
   }) async {
     final excel = Excel.createExcel();
@@ -33,7 +34,7 @@ class FileEmailService {
     sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('거래처명');
     sheet.cell(CellIndex.indexByString('B1')).value = TextCellValue(clientName);
     sheet.cell(CellIndex.indexByString('A2')).value = TextCellValue('사업자등록번호');
-    sheet.cell(CellIndex.indexByString('B2')).value = TextCellValue('');
+    sheet.cell(CellIndex.indexByString('B2')).value = TextCellValue(bizId ?? '');
 
     // 헤더 (4행)
     final headers = [

@@ -645,6 +645,7 @@ class AppProvider with ChangeNotifier {
       // 현재 거래처의 직원 목록을 템플릿에 포함
       await FileEmailService.generateExcelTemplate(
         _selectedClient!.name,
+        bizId: _selectedClient!.bizId,
         workers: currentWorkers,
       );
       _setError(null);

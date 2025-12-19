@@ -91,11 +91,25 @@ class _MainScreenContentState extends State<MainScreenContent> {
                 return TextFormField(
                   controller: controller,
                   focusNode: focusNode,
+                  onTap: () {
+                    // 클릭 시 기존 텍스트 전체 선택 (쉽게 지우기 위해)
+                    controller.selection = TextSelection(
+                      baseOffset: 0,
+                      extentOffset: controller.text.length,
+                    );
+                  },
                   decoration: InputDecoration(
                     labelText: '거래처 (검색 가능)',
                     border: const OutlineInputBorder(),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    suffixIcon: const Icon(Icons.search),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        controller.clear();
+                        focusNode.unfocus();
+                      },
+                      tooltip: '지우기',
+                    ),
                     hintText: '거래처명 또는 사업자번호',
                   ),
                 );
