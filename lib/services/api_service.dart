@@ -64,16 +64,30 @@ class ApiService {
   // ========== 직원 ==========
 
   Future<List<WorkerModel>> getEmployees(int clientId) async {
-    final response = await http.get(
-      Uri.parse('$_serverUrl/clients/$clientId/employees'),
-      headers: _headers,
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('$_serverUrl/clients/$clientId/employees'),
+        headers: _headers,
+      );
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
-      return data.map((json) => WorkerModel.fromJson(json)).toList();
-    } else {
-      throw Exception('직원 조회 실패: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
+        return data.map((json) {
+          try {
+            return WorkerModel.fromJson(json);
+          } catch (e) {
+            print('⚠️ WorkerModel.fromJson 에러: $e');
+            print('   JSON 데이터: $json');
+            rethrow;
+          }
+        }).toList();
+      } else {
+        final errorBody = utf8.decode(response.bodyBytes);
+        throw Exception('직원 조회 실패 (${response.statusCode}): $errorBody');
+      }
+    } catch (e) {
+      print('❌ getEmployees 에러: $e');
+      rethrow;
     }
   }
 
