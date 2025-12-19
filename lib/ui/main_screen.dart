@@ -72,17 +72,59 @@ class _MainScreenContentState extends State<MainScreenContent> {
         children: [
           Expanded(
             flex: 2,
-            child: DropdownButtonFormField<ClientModel>(
-              value: provider.selectedClient,
-              decoration: const InputDecoration(
-                labelText: '거래처',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-              items: provider.clients.map((client) {
-                return DropdownMenuItem(value: client, child: Text(client.name));
-              }).toList(),
-              onChanged: (client) => provider.selectClient(client),
+            child: Autocomplete<ClientModel>(
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (textEditingValue.text.isEmpty) {
+                  return provider.clients;
+                }
+                return provider.clients.where((client) {
+                  return client.name.toLowerCase().contains(textEditingValue.text.toLowerCase()) ||
+                         client.bizId.contains(textEditingValue.text);
+                });
+              },
+              displayStringForOption: (ClientModel client) => client.name,
+              onSelected: (ClientModel client) => provider.selectClient(client),
+              initialValue: provider.selectedClient != null 
+                  ? TextEditingValue(text: provider.selectedClient!.name) 
+                  : null,
+              fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                return TextFormField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: InputDecoration(
+                    labelText: '거래처 (검색 가능)',
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    suffixIcon: const Icon(Icons.search),
+                    hintText: '거래처명 또는 사업자번호',
+                  ),
+                );
+              },
+              optionsViewBuilder: (context, onSelected, options) {
+                return Align(
+                  alignment: Alignment.topLeft,
+                  child: Material(
+                    elevation: 4,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 200, maxWidth: 400),
+                      child: ListView.builder(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        itemCount: options.length,
+                        itemBuilder: (context, index) {
+                          final client = options.elementAt(index);
+                          return ListTile(
+                            title: Text(client.name),
+                            subtitle: Text('사업자: ${client.bizId}'),
+                            onTap: () => onSelected(client),
+                            dense: true,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(width: 16),

@@ -121,8 +121,9 @@ class FileEmailService {
   // ========== Excel 파싱 ==========
 
   static Future<Map<String, dynamic>> parseExcelFile(String filePath) async {
-    final bytes = await File(filePath).readAsBytes();
-    final excel = Excel.decodeBytes(bytes);
+    try {
+      final bytes = await File(filePath).readAsBytes();
+      final excel = Excel.decodeBytes(bytes);
 
     String clientName = '';
     String bizId = '';
@@ -191,6 +192,18 @@ class FileEmailService {
       'bizId': bizId,
       'workers': workers,
     };
+    } catch (e) {
+      // Excel 파싱 에러 상세 정보 제공
+      throw Exception('Excel 파일 읽기 실패: $e\n\n'
+          '가능한 원인:\n'
+          '1. 파일이 손상되었거나 형식이 올바르지 않습니다.\n'
+          '2. Excel 파일이 아닌 다른 형식의 파일입니다.\n'
+          '3. 파일에 지원하지 않는 서식이 포함되어 있습니다.\n\n'
+          '해결 방법:\n'
+          '- 템플릿을 다시 다운로드하여 사용해주세요.\n'
+          '- Excel에서 다른 이름으로 저장 시 "Excel 통합 문서(*.xlsx)" 형식을 선택하세요.\n'
+          '- 복잡한 서식(조건부 서식, 매크로 등)을 제거하고 다시 시도하세요.');
+    }
   }
 
   // ========== CSV 급여대장 내보내기 ==========
