@@ -180,6 +180,13 @@ class EmployeeManagementScreen extends StatelessWidget {
       context: context,
       builder: (context) => WorkerDialog(
         clientId: provider.selectedClient!.id,
+        onSave: (newWorker, newMonthlyData) async {
+          final saved = await provider.saveWorker(newWorker);
+          if (newMonthlyData != null && saved.id != null) {
+            await provider.updateMonthlyData(saved.id!, newMonthlyData);
+          }
+          return saved;
+        },
       ),
     );
 
@@ -195,7 +202,7 @@ class EmployeeManagementScreen extends StatelessWidget {
     AppProvider provider,
     WorkerModel worker,
   ) async {
-    final monthlyData = provider.getMonthlyDataForWorker(worker.id!);
+    final monthlyData = provider.getMonthlyData(worker.id!);
 
     final result = await showDialog<WorkerModel>(
       context: context,
@@ -203,6 +210,13 @@ class EmployeeManagementScreen extends StatelessWidget {
         clientId: provider.selectedClient!.id,
         worker: worker,
         monthlyData: monthlyData,
+        onSave: (newWorker, newMonthlyData) async {
+          await provider.saveWorker(newWorker);
+          if (newMonthlyData != null && newWorker.id != null) {
+            await provider.updateMonthlyData(newWorker.id!, newMonthlyData);
+          }
+          return newWorker;
+        },
       ),
     );
 
@@ -236,7 +250,7 @@ class EmployeeManagementScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () async {
               try {
-                await provider.deleteWorker(worker.id!);
+                await provider.deleteWorker(worker.clientId, worker.id!);
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(

@@ -296,7 +296,7 @@ class AppProvider with ChangeNotifier {
     }
   }
 
-  Future<void> saveWorker(WorkerModel worker) async {
+  Future<WorkerModel> saveWorker(WorkerModel worker) async {
     try {
       _setLoading(true);
       final saved = await _apiService.upsertEmployee(worker);
@@ -316,6 +316,7 @@ class AppProvider with ChangeNotifier {
 
       _setError(null);
       notifyListeners();
+      return saved;
     } catch (e) {
       _setError('직원 저장 실패: $e');
       rethrow;
