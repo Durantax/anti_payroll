@@ -90,7 +90,13 @@ class WorkerModel {
   final String? emailCc;
   final bool useEmail;
   
-  final int familyCount; // 공제대상 가족수 (본인 포함)
+  // 세금 관련 필드 (서버 API 스펙과 일치)
+  final int taxDependents;        // 공제대상 가족 수 (본인 포함)
+  final int childrenCount;        // 8세~20세 자녀 수
+  final int taxFreeMeal;          // 비과세 식대
+  final int taxFreeCarMaintenance; // 비과세 차량유지비
+  final int otherTaxFree;         // 기타 비과세
+  final int incomeTaxRate;        // 소득세 배율 (80, 100, 120)
 
   WorkerModel({
     this.id,
@@ -103,7 +109,6 @@ class WorkerModel {
     this.salaryType = 'HOURLY',
     this.monthlySalary = 0,
     this.hourlyRate = 0,
-    this.familyCount = 1,
     this.normalHours = 209,
     this.foodAllowance = 0,
     this.carAllowance = 0,
@@ -115,6 +120,12 @@ class WorkerModel {
     this.emailTo,
     this.emailCc,
     this.useEmail = false,
+    this.taxDependents = 1,
+    this.childrenCount = 0,
+    this.taxFreeMeal = 0,
+    this.taxFreeCarMaintenance = 0,
+    this.otherTaxFree = 0,
+    this.incomeTaxRate = 100,
   });
 
   factory WorkerModel.fromJson(Map<String, dynamic> json) {
@@ -140,7 +151,12 @@ class WorkerModel {
       emailTo: json['emailTo'] as String?,
       emailCc: json['emailCc'] as String?,
       useEmail: json['useEmail'] as bool? ?? false,
-      familyCount: (json['familyCount'] as num?)?.toInt() ?? 1,
+      taxDependents: (json['taxDependents'] as num?)?.toInt() ?? 1,
+      childrenCount: (json['childrenCount'] as num?)?.toInt() ?? 0,
+      taxFreeMeal: (json['taxFreeMeal'] as num?)?.toInt() ?? 0,
+      taxFreeCarMaintenance: (json['taxFreeCarMaintenance'] as num?)?.toInt() ?? 0,
+      otherTaxFree: (json['otherTaxFree'] as num?)?.toInt() ?? 0,
+      incomeTaxRate: (json['incomeTaxRate'] as num?)?.toInt() ?? 100,
     );
   }
 
@@ -166,7 +182,12 @@ class WorkerModel {
       'emailTo': emailTo,
       'emailCc': emailCc,
       'useEmail': useEmail,
-      'familyCount': familyCount,
+      'taxDependents': taxDependents,
+      'childrenCount': childrenCount,
+      'taxFreeMeal': taxFreeMeal,
+      'taxFreeCarMaintenance': taxFreeCarMaintenance,
+      'otherTaxFree': otherTaxFree,
+      'incomeTaxRate': incomeTaxRate,
     };
     
     // employeeId가 있으면 포함 (업데이트 시 필수)
@@ -199,6 +220,12 @@ class WorkerModel {
     String? emailTo,
     String? emailCc,
     bool? useEmail,
+    int? taxDependents,
+    int? childrenCount,
+    int? taxFreeMeal,
+    int? taxFreeCarMaintenance,
+    int? otherTaxFree,
+    int? incomeTaxRate,
   }) {
     return WorkerModel(
       id: id ?? this.id,
@@ -222,6 +249,12 @@ class WorkerModel {
       emailTo: emailTo ?? this.emailTo,
       emailCc: emailCc ?? this.emailCc,
       useEmail: useEmail ?? this.useEmail,
+      taxDependents: taxDependents ?? this.taxDependents,
+      childrenCount: childrenCount ?? this.childrenCount,
+      taxFreeMeal: taxFreeMeal ?? this.taxFreeMeal,
+      taxFreeCarMaintenance: taxFreeCarMaintenance ?? this.taxFreeCarMaintenance,
+      otherTaxFree: otherTaxFree ?? this.otherTaxFree,
+      incomeTaxRate: incomeTaxRate ?? this.incomeTaxRate,
     );
   }
 }

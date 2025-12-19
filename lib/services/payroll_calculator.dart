@@ -208,17 +208,17 @@ class PayrollCalculator {
     final monthlyTaxableIncome = taxableIncome ~/ 12;
     
     // 공제대상 가족수 (WorkerModel에서 가져옴)
-    final familyCount = worker.familyCount;
+    final taxDependents = worker.taxDependents;
     
     // 간이세액표 적용하여 소득세 계산
     final taxes = IncomeTaxCalculator.calculateIncomeTax(
       monthlyIncome: monthlyTaxableIncome,
-      familyCount: familyCount,
+      familyCount: taxDependents,
     );
     
     incomeTax = taxes[0]; // 이미 1의 자리 절사됨
     localIncomeTax = taxes[1]; // 이미 1의 자리 절사됨
-    incomeTaxFormula = '간이세액표 (월 ${formatMoney(monthlyTaxableIncome)}원, 가족 ${familyCount}인)';
+    incomeTaxFormula = '간이세액표 (월 ${formatMoney(monthlyTaxableIncome)}원, 가족 ${taxDependents}인)';
     localTaxFormula = '소득세 × 10%';
 
     // 7. 추가공제
