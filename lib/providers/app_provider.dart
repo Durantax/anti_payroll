@@ -494,6 +494,27 @@ class AppProvider with ChangeNotifier {
     }
   }
 
+  Future<void> exportPayrollRegisterPdf() async {
+    if (_selectedClient == null || _salaryResults.isEmpty) return;
+
+    try {
+      _setLoading(true);
+      final results = _salaryResults.values.toList();
+      await FileEmailService.exportPayrollRegisterPdf(
+        clientName: _selectedClient!.name,
+        bizId: _selectedClient!.businessId,
+        year: selectedYear,
+        month: selectedMonth,
+        results: results,
+      );
+      _setError(null);
+    } catch (e) {
+      _setError('급여대장 PDF 내보내기 실패: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // ========== PDF 생성 ==========
 
   Future<void> generatePdf(int workerId) async {

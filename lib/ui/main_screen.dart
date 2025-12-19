@@ -297,13 +297,19 @@ class _MainScreenState extends State<MainScreen> {
               ElevatedButton.icon(
                 onPressed: () => provider.exportCsv(),
                 icon: const Icon(Icons.table_chart),
-                label: const Text('급여대장 내보내기'),
+                label: const Text('급여대장 CSV'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () => provider.exportPayrollRegisterPdf(),
+                icon: const Icon(Icons.picture_as_pdf),
+                label: const Text('급여대장 PDF'),
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: () => provider.generateAllPdfs(),
                 icon: const Icon(Icons.picture_as_pdf),
-                label: const Text('PDF 일괄생성'),
+                label: const Text('명세서 일괄생성'),
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(

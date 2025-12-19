@@ -228,6 +228,217 @@ class FileEmailService {
     return file;
   }
 
+  // ========== 급여대장 PDF 생성 ==========
+
+  static Future<File> exportPayrollRegisterPdf({
+    required String clientName,
+    required String bizId,
+    required int year,
+    required int month,
+    required List<SalaryResult> results,
+  }) async {
+    final pdf = pw.Document();
+
+    // 한글 폰트 로드
+    final fontData = await rootBundle.load('assets/fonts/NanumGothic-Regular.ttf');
+    final ttf = pw.Font.ttf(fontData);
+    final boldFontData = await rootBundle.load('assets/fonts/NanumGothic-Bold.ttf');
+    final ttfBold = pw.Font.ttf(boldFontData);
+
+    // 합계 계산
+    int totalBaseSalary = 0;
+    int totalOvertimePay = 0;
+    int totalNightPay = 0;
+    int totalHolidayPay = 0;
+    int totalWeeklyHolidayPay = 0;
+    int totalBonus = 0;
+    int totalPayment = 0;
+    int totalNationalPension = 0;
+    int totalHealthInsurance = 0;
+    int totalLongTermCare = 0;
+    int totalEmploymentInsurance = 0;
+    int totalIncomeTax = 0;
+    int totalLocalIncomeTax = 0;
+    int totalDeduction = 0;
+    int totalNetPayment = 0;
+
+    for (var result in results) {
+      totalBaseSalary += result.baseSalary;
+      totalOvertimePay += result.overtimePay;
+      totalNightPay += result.nightPay;
+      totalHolidayPay += result.holidayPay;
+      totalWeeklyHolidayPay += result.weeklyHolidayPay;
+      totalBonus += result.bonus;
+      totalPayment += result.totalPayment;
+      totalNationalPension += result.nationalPension;
+      totalHealthInsurance += result.healthInsurance;
+      totalLongTermCare += result.longTermCare;
+      totalEmploymentInsurance += result.employmentInsurance;
+      totalIncomeTax += result.incomeTax;
+      totalLocalIncomeTax += result.localIncomeTax;
+      totalDeduction += result.totalDeduction;
+      totalNetPayment += result.netPayment;
+    }
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.all(20),
+        build: (context) => [
+          // 제목
+          pw.Center(
+            child: pw.Text(
+              '급여대장',
+              style: pw.TextStyle(font: ttfBold, fontSize: 20),
+            ),
+          ),
+          pw.SizedBox(height: 10),
+          
+          // 기본정보
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('사업장: $clientName', style: pw.TextStyle(font: ttf, fontSize: 10)),
+              pw.Text('사업자등록번호: $bizId', style: pw.TextStyle(font: ttf, fontSize: 10)),
+              pw.Text('귀속: $year년 $month월', style: pw.TextStyle(font: ttf, fontSize: 10)),
+            ],
+          ),
+          pw.SizedBox(height: 15),
+
+          // 급여대장 테이블
+          _buildPayrollRegisterTable(results, ttf, ttfBold,
+            totalBaseSalary, totalOvertimePay, totalNightPay, totalHolidayPay,
+            totalWeeklyHolidayPay, totalBonus, totalPayment,
+            totalNationalPension, totalHealthInsurance, totalLongTermCare,
+            totalEmploymentInsurance, totalIncomeTax, totalLocalIncomeTax,
+            totalDeduction, totalNetPayment),
+        ],
+      ),
+    );
+
+    final pdfBytes = await pdf.save();
+    final directory = await getApplicationDocumentsDirectory();
+    final fileName = '${clientName}_${year}년${month}월_급여대장.pdf';
+    final file = File('${directory.path}/$fileName');
+    await file.writeAsBytes(pdfBytes);
+
+    // Windows 기본 뷰어로 열기
+    if (Platform.isWindows) {
+      await Process.run('cmd', ['/c', 'start', '', file.path], runInShell: true);
+    }
+
+    return file;
+  }
+
+  static pw.Widget _buildPayrollRegisterTable(
+    List<SalaryResult> results,
+    pw.Font font,
+    pw.Font boldFont,
+    int totalBaseSalary,
+    int totalOvertimePay,
+    int totalNightPay,
+    int totalHolidayPay,
+    int totalWeeklyHolidayPay,
+    int totalBonus,
+    int totalPayment,
+    int totalNationalPension,
+    int totalHealthInsurance,
+    int totalLongTermCare,
+    int totalEmploymentInsurance,
+    int totalIncomeTax,
+    int totalLocalIncomeTax,
+    int totalDeduction,
+    int totalNetPayment,
+  ) {
+    final headers = ['이름', '구분', '기본급', '연장', '야간', '휴일', '주휴', '상여', '지급계', 
+                     '국민연금', '건강보험', '장기요양', '고용보험', '소득세', '지방세', '공제계', '실수령액'];
+
+    return pw.Table(
+      border: pw.TableBorder.all(color: PdfColors.grey800, width: 0.5),
+      columnWidths: {
+        0: const pw.FixedColumnWidth(40),  // 이름
+        1: const pw.FixedColumnWidth(35),  // 구분
+        2: const pw.FixedColumnWidth(50),  // 기본급
+        3: const pw.FixedColumnWidth(35),  // 연장
+        4: const pw.FixedColumnWidth(35),  // 야간
+        5: const pw.FixedColumnWidth(35),  // 휴일
+        6: const pw.FixedColumnWidth(40),  // 주휴
+        7: const pw.FixedColumnWidth(35),  // 상여
+        8: const pw.FixedColumnWidth(50),  // 지급계
+        9: const pw.FixedColumnWidth(40),  // 국민연금
+        10: const pw.FixedColumnWidth(40), // 건강보험
+        11: const pw.FixedColumnWidth(35), // 장기요양
+        12: const pw.FixedColumnWidth(40), // 고용보험
+        13: const pw.FixedColumnWidth(35), // 소득세
+        14: const pw.FixedColumnWidth(35), // 지방세
+        15: const pw.FixedColumnWidth(45), // 공제계
+        16: const pw.FixedColumnWidth(50), // 실수령액
+      },
+      children: [
+        // 헤더
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+          children: headers.map((h) => pw.Padding(
+            padding: const pw.EdgeInsets.all(3),
+            child: pw.Text(h, style: pw.TextStyle(font: boldFont, fontSize: 7), textAlign: pw.TextAlign.center),
+          )).toList(),
+        ),
+        // 데이터
+        ...results.map((result) => pw.TableRow(
+          children: [
+            _buildCell(result.workerName, font, 7),
+            _buildCell(result.employmentType == 'regular' ? '근로' : '사업', font, 6),
+            _buildCell(formatMoney(result.baseSalary), font, 7, align: pw.TextAlign.right),
+            _buildCell(result.overtimePay > 0 ? formatMoney(result.overtimePay) : '', font, 7, align: pw.TextAlign.right),
+            _buildCell(result.nightPay > 0 ? formatMoney(result.nightPay) : '', font, 7, align: pw.TextAlign.right),
+            _buildCell(result.holidayPay > 0 ? formatMoney(result.holidayPay) : '', font, 7, align: pw.TextAlign.right),
+            _buildCell(formatMoney(result.weeklyHolidayPay), font, 7, align: pw.TextAlign.right),
+            _buildCell(result.bonus > 0 ? formatMoney(result.bonus) : '', font, 7, align: pw.TextAlign.right),
+            _buildCell(formatMoney(result.totalPayment), font, 7, align: pw.TextAlign.right),
+            _buildCell(result.nationalPension > 0 ? formatMoney(result.nationalPension) : '', font, 7, align: pw.TextAlign.right),
+            _buildCell(result.healthInsurance > 0 ? formatMoney(result.healthInsurance) : '', font, 7, align: pw.TextAlign.right),
+            _buildCell(result.longTermCare > 0 ? formatMoney(result.longTermCare) : '', font, 7, align: pw.TextAlign.right),
+            _buildCell(result.employmentInsurance > 0 ? formatMoney(result.employmentInsurance) : '', font, 7, align: pw.TextAlign.right),
+            _buildCell(formatMoney(result.incomeTax), font, 7, align: pw.TextAlign.right),
+            _buildCell(result.localIncomeTax > 0 ? formatMoney(result.localIncomeTax) : '', font, 7, align: pw.TextAlign.right),
+            _buildCell(formatMoney(result.totalDeduction), font, 7, align: pw.TextAlign.right),
+            _buildCell(formatMoney(result.netPayment), font, 7, align: pw.TextAlign.right),
+          ],
+        )).toList(),
+        // 합계
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+          children: [
+            _buildCell('합계', boldFont, 7),
+            _buildCell('', font, 7),
+            _buildCell(formatMoney(totalBaseSalary), boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(totalOvertimePay > 0 ? formatMoney(totalOvertimePay) : '', boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(totalNightPay > 0 ? formatMoney(totalNightPay) : '', boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(totalHolidayPay > 0 ? formatMoney(totalHolidayPay) : '', boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(formatMoney(totalWeeklyHolidayPay), boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(totalBonus > 0 ? formatMoney(totalBonus) : '', boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(formatMoney(totalPayment), boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(totalNationalPension > 0 ? formatMoney(totalNationalPension) : '', boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(totalHealthInsurance > 0 ? formatMoney(totalHealthInsurance) : '', boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(totalLongTermCare > 0 ? formatMoney(totalLongTermCare) : '', boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(totalEmploymentInsurance > 0 ? formatMoney(totalEmploymentInsurance) : '', boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(formatMoney(totalIncomeTax), boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(totalLocalIncomeTax > 0 ? formatMoney(totalLocalIncomeTax) : '', boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(formatMoney(totalDeduction), boldFont, 7, align: pw.TextAlign.right),
+            _buildCell(formatMoney(totalNetPayment), boldFont, 7, align: pw.TextAlign.right),
+          ],
+        ),
+      ],
+    );
+  }
+
+  static pw.Widget _buildCell(String text, pw.Font font, double fontSize, {pw.TextAlign align = pw.TextAlign.center}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(3),
+      child: pw.Text(text, style: pw.TextStyle(font: font, fontSize: fontSize), textAlign: align),
+    );
+  }
+
   // ========== PDF 생성 ==========
 
   static Future<File> generatePayslipPdf({
