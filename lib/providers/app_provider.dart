@@ -502,7 +502,7 @@ class AppProvider with ChangeNotifier {
       final results = _salaryResults.values.toList();
       await FileEmailService.exportPayrollRegisterPdf(
         clientName: _selectedClient!.name,
-        bizId: _selectedClient!.businessId,
+        bizId: _selectedClient!.bizId,
         year: selectedYear,
         month: selectedMonth,
         results: results,
