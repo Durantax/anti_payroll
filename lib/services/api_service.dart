@@ -156,11 +156,11 @@ class ApiService {
     final body = {
       'employeeId': data.employeeId,
       'ym': data.ym,
-      'workHours': data.normalHours,
-      'bonus': data.bonus,
-      'overtimeHours': data.overtimeHours,
-      'nightHours': data.nightHours,
-      'holidayHours': data.holidayHours,
+      'workHours': data.normalHours.toDouble(),
+      'bonus': data.bonus.toDouble(),
+      'overtimeHours': data.overtimeHours.toDouble(),
+      'nightHours': data.nightHours.toDouble(),
+      'holidayHours': data.holidayHours.toDouble(),
     };
 
     final response = await http.post(
@@ -170,7 +170,8 @@ class ApiService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('월별 데이터 저장 실패: ${response.statusCode}');
+      final errorBody = utf8.decode(response.bodyBytes);
+      throw Exception('월별 데이터 저장 실패: ${response.statusCode}\n$errorBody');
     }
   }
 
