@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/models.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
 
 class WorkerDialog extends StatefulWidget {
   final int clientId;
@@ -612,9 +614,12 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
       useEmail: _useEmail,
     );
 
+    final provider = context.read<AppProvider>();
+    final currentYm = provider.selectedYm;
+
     final monthlyData = MonthlyData(
       employeeId: worker.id ?? 0,
-      ym: '',
+      ym: currentYm,
       normalHours: double.tryParse(_normalHoursController.text) ?? 209,
       overtimeHours: double.tryParse(_overtimeHoursController.text) ?? 0,
       nightHours: double.tryParse(_nightHoursController.text) ?? 0,
