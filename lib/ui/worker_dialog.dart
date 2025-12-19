@@ -30,7 +30,6 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
   late TextEditingController _nameController;
   late TextEditingController _birthDateController;
   late TextEditingController _phoneController;
-  late TextEditingController _emailController;
 
   // 급여 정보
   late TextEditingController _monthlySalaryController;
@@ -85,7 +84,6 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
     _nameController = TextEditingController(text: worker?.name ?? '');
     _birthDateController = TextEditingController(text: worker?.birthDate ?? '');
     _phoneController = TextEditingController(text: worker?.phoneNumber ?? '');
-    _emailController = TextEditingController(text: worker?.email ?? worker?.emailTo ?? '');
 
     // 급여 정보
     _monthlySalaryController = TextEditingController(text: worker?.monthlySalary.toString() ?? '0');
@@ -135,7 +133,6 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
     _nameController.dispose();
     _birthDateController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
     _monthlySalaryController.dispose();
     _hourlyRateController.dispose();
     _weeklyHoursController.dispose();
@@ -274,11 +271,6 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
           TextFormField(
             controller: _phoneController,
             decoration: const InputDecoration(labelText: '전화번호', border: OutlineInputBorder()),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _emailController,
-            decoration: const InputDecoration(labelText: '이메일', border: OutlineInputBorder()),
           ),
         ],
       ),
@@ -598,7 +590,6 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
       name: _nameController.text,
       birthDate: _birthDateController.text,
       phoneNumber: _phoneController.text,
-      email: _emailController.text,
       employmentType: _employmentType,
       monthlySalary: int.tryParse(_monthlySalaryController.text) ?? 0,
       hourlyRate: int.tryParse(_hourlyRateController.text) ?? 0,
@@ -609,10 +600,8 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
       pensionInsurableWage: _pensionInsurableWageController.text.isNotEmpty
           ? int.tryParse(_pensionInsurableWageController.text)
           : null,
-      // 기본정보 탭의 이메일을 emailTo로도 저장 (서버 DB에는 emailTo만 있음)
-      emailTo: _emailToController.text.isNotEmpty 
-          ? _emailToController.text 
-          : (_emailController.text.isNotEmpty ? _emailController.text : null),
+      // 이메일은 이메일 탭에서만 입력 (서버 DB에는 emailTo만 있음)
+      emailTo: _emailToController.text.isNotEmpty ? _emailToController.text : null,
       emailCc: _emailCcController.text.isNotEmpty ? _emailCcController.text : null,
       useEmail: _useEmail,
     );

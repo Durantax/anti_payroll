@@ -558,18 +558,37 @@ class AppProvider with ChangeNotifier {
 
       // 직원 데이터 처리
       for (var data in workersData) {
-        final workerId = currentWorkers
-            .firstWhere(
-              (w) => w.name == data['name'] && w.birthDate == data['birthDate'],
-              orElse: () => WorkerModel(
-                clientId: _selectedClient!.id,
-                name: '',
-                birthDate: '',
-              ),
-            )
-            .id;
+        // 기존 직원 찾기
+        var existingWorker = currentWorkers.firstWhere(
+          (w) => w.name == data['name'] && w.birthDate == data['birthDate'],
+          orElse: () => WorkerModel(
+            clientId: _selectedClient!.id,
+            name: '',
+            birthDate: '',
+          ),
+        );
 
-        if (workerId == null) continue;
+        int workerId;
+
+        // 신규 직원이면 서버에 저장
+        if (existingWorker.id == null || existingWorker.name.isEmpty) {
+          final newWorker = WorkerModel(
+            clientId: _selectedClient!.id,
+            name: data['name'] as String,
+            birthDate: data['birthDate'] as String,
+            employmentType: 'regular',
+            salaryType: (data['hourlyRate'] as int) > 0 ? 'hourly' : 'monthly',
+            monthlySalary: data['monthlySalary'] as int,
+            hourlyRate: data['hourlyRate'] as int,
+            normalHours: data['normalHours'] as double,
+          );
+
+          // 서버에 저장하고 ID 받기
+          final savedWorker = await saveWorker(newWorker);
+          workerId = savedWorker.id!;
+        } else {
+          workerId = existingWorker.id!;
+        }
 
         // MonthlyData 생성
         final monthlyData = MonthlyData(
@@ -590,6 +609,9 @@ class AppProvider with ChangeNotifier {
 
         updateMonthlyData(workerId, monthlyData);
       }
+
+      // 직원 목록 갱신
+      await loadWorkers(_selectedClient!.id);
 
       _setError(null);
       notifyListeners();
