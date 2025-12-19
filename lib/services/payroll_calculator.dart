@@ -108,7 +108,26 @@ class PayrollCalculator {
         bonus +
         additionalPay1 +
         additionalPay2 +
+        additionalPay3 +
+        worker.foodAllowance +
+        worker.carAllowance;
+
+    // ===== 4대보험 기준액 계산 =====
+    // 과세 대상 수당: 기본급 + 연장 + 야간 + 휴일 + 주휴 + 상여금 + 추가수당
+    // 비과세 수당: 식대, 차량유지비 제외
+    // TODO: 추가수당의 과세 여부는 수당 마스터 연동 후 개선
+    final taxableIncome = baseSalary +
+        overtimePay +
+        nightPay +
+        holidayPay +
+        weeklyHolidayPay +
+        bonus +
+        additionalPay1 +
+        additionalPay2 +
         additionalPay3;
+    
+    // 4대보험 기준액 = 과세 소득 (비과세 수당 제외됨)
+    final insuranceBase = taxableIncome;
 
     // ===== 공제 항목 =====
 
@@ -116,7 +135,7 @@ class PayrollCalculator {
     int nationalPension = 0;
     String pensionFormula = '';
     if (worker.hasNationalPension) {
-      final pensionBase = worker.pensionInsurableWage ?? baseSalary;
+      final pensionBase = worker.pensionInsurableWage ?? insuranceBase;
       nationalPension = (pensionBase * AppConstants.pensionRate).round();
       pensionFormula = '${formatMoney(pensionBase)}원 × 4.5%';
     }
@@ -126,8 +145,8 @@ class PayrollCalculator {
     String healthFormula = '';
     if (worker.hasHealthInsurance) {
       final healthBase = worker.healthInsuranceBasis == 'salary'
-          ? baseSalary
-          : (worker.pensionInsurableWage ?? baseSalary);
+          ? insuranceBase
+          : (worker.pensionInsurableWage ?? insuranceBase);
       healthInsurance = (healthBase * AppConstants.healthRate).round();
       healthFormula = '${formatMoney(healthBase)}원 × 3.545%';
     }
@@ -144,12 +163,12 @@ class PayrollCalculator {
     int employmentInsurance = 0;
     String employmentFormula = '';
     if (worker.hasEmploymentInsurance) {
-      employmentInsurance = (baseSalary * AppConstants.employmentRate).round();
-      employmentFormula = '${formatMoney(baseSalary)}원 × 0.9%';
+      employmentInsurance = (insuranceBase * AppConstants.employmentRate).round();
+      employmentFormula = '${formatMoney(insuranceBase)}원 × 0.9%';
     }
 
     // 5. 소득세 (3.3% - 1의 자리 절사)
-    final taxableIncome = totalPayment;
+    // 과세 소득 기준 (비과세 수당 제외)
     final incomeTaxRaw = (taxableIncome * AppConstants.incomeTaxRate).round();
     final incomeTax = (incomeTaxRaw ~/ 10) * 10; // 1의 자리 절사
     final incomeTaxFormula = '${formatMoney(taxableIncome)}원 × 3.3%';
