@@ -77,13 +77,15 @@ class PayrollCalculator {
       }
     }
 
-    // 5. 주휴수당 (개근주수 × 시급 × 주소정근로시간)
+    // 5. 주휴수당 (시급 × 1일 소정근로시간(최대 8시간) × 개근주수)
     int weeklyHolidayPay = 0;
     String weeklyHolidayFormula = '';
-    if (monthly.weekCount > 0) {
-      weeklyHolidayPay = (hourlyRate * monthly.weeklyHours * monthly.weekCount).round();
+    if (monthly.weekCount > 0 && monthly.weeklyHours > 0) {
+      // 1일 소정근로시간 = 주 소정근로시간 ÷ 5일 (최대 8시간)
+      final dailyHours = min(monthly.weeklyHours / 5, 8.0);
+      weeklyHolidayPay = (hourlyRate * dailyHours * monthly.weekCount).round();
       weeklyHolidayFormula =
-          '${formatMoney(hourlyRate)}원 × ${monthly.weeklyHours.toStringAsFixed(0)}시간 × ${monthly.weekCount}주';
+          '${formatMoney(hourlyRate)}원 × ${dailyHours.toStringAsFixed(1)}시간 × ${monthly.weekCount}주';
     }
 
     // 6. 상여금
