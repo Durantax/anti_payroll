@@ -1,6 +1,7 @@
 import 'dart:math';
 import '../core/models.dart';
 import '../core/constants.dart';
+import 'income_tax_calculator.dart';
 
 class PayrollCalculator {
   /// 급여 계산 (정규직 / 프리랜서)
@@ -196,16 +197,30 @@ class PayrollCalculator {
       employmentFormula = '${formatMoney(insuranceBase)}원 × 0.9%';
     }
 
-    // 5. 소득세 (3.3% - 1의 자리 절사)
-    // 과세 소득 기준 (비과세 수당 제외)
-    final incomeTaxRaw = (taxableIncome * AppConstants.incomeTaxRate).round();
-    final incomeTax = (incomeTaxRaw ~/ 10) * 10; // 1의 자리 절사
-    final incomeTaxFormula = '${formatMoney(taxableIncome)}원 × 3.3%';
-
-    // 6. 지방소득세 (소득세의 10% - 1의 자리 절사)
-    final localIncomeTaxRaw = (incomeTax * AppConstants.localTaxRate).round();
-    final localIncomeTax = (localIncomeTaxRaw ~/ 10) * 10; // 1의 자리 절사
-    final localTaxFormula = '${formatMoney(incomeTax)}원 × 10%';
+    // 5. 소득세 (근로소득 간이세액표 적용)
+    // 근로소득자: 간이세액표 / 사업소득자: 3.3% (프리랜서와 동일)
+    int incomeTax;
+    int localIncomeTax;
+    String incomeTaxFormula;
+    String localTaxFormula;
+    
+    // 월 과세소득 계산 (4대보험 공제 전)
+    final monthlyTaxableIncome = taxableIncome ~/ 12;
+    
+    // 공제대상 가족수 추정 (본인 포함)
+    // TODO: WorkerModel에 가족수 필드 추가 필요
+    final familyCount = 1; // 기본값: 본인만
+    
+    // 간이세액표 적용하여 소득세 계산
+    final taxes = IncomeTaxCalculator.calculateIncomeTax(
+      monthlyIncome: monthlyTaxableIncome,
+      familyCount: familyCount,
+    );
+    
+    incomeTax = taxes[0]; // 이미 1의 자리 절사됨
+    localIncomeTax = taxes[1]; // 이미 1의 자리 절사됨
+    incomeTaxFormula = '간이세액표 적용 (월 ${formatMoney(monthlyTaxableIncome)}원, 가족 ${familyCount}인)';
+    localTaxFormula = '소득세 × 10%';
 
     // 7. 추가공제
     final additionalDeduct1 = monthly.additionalDeduct1;
