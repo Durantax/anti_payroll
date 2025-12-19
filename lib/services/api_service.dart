@@ -110,34 +110,36 @@ class ApiService {
   }) async {
     try {
       final response = await http.get(
-        Uri.parse('$_serverUrl/employees/$employeeId/monthly-data/$ym'),
+        Uri.parse('$_serverUrl/payroll/monthly?employeeId=$employeeId&ym=$ym'),
         headers: _headers,
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
+        if (data == null) return null;
+        
         return MonthlyData(
           employeeId: data['employeeId'] as int,
           ym: data['ym'] as String,
-          normalHours: (data['normalHours'] as num?)?.toDouble() ?? 209,
+          normalHours: (data['workHours'] as num?)?.toDouble() ?? 209,
           overtimeHours: (data['overtimeHours'] as num?)?.toDouble() ?? 0,
           nightHours: (data['nightHours'] as num?)?.toDouble() ?? 0,
           holidayHours: (data['holidayHours'] as num?)?.toDouble() ?? 0,
-          weeklyHours: (data['weeklyHours'] as num?)?.toDouble() ?? 40,
-          weekCount: (data['weekCount'] as int?) ?? 4,
-          bonus: (data['bonus'] as int?) ?? 0,
-          additionalPay1: (data['additionalPay1'] as int?) ?? 0,
-          additionalPay1Name: (data['additionalPay1Name'] as String?) ?? '',
-          additionalPay2: (data['additionalPay2'] as int?) ?? 0,
-          additionalPay2Name: (data['additionalPay2Name'] as String?) ?? '',
-          additionalPay3: (data['additionalPay3'] as int?) ?? 0,
-          additionalPay3Name: (data['additionalPay3Name'] as String?) ?? '',
-          additionalDeduct1: (data['additionalDeduct1'] as int?) ?? 0,
-          additionalDeduct1Name: (data['additionalDeduct1Name'] as String?) ?? '',
-          additionalDeduct2: (data['additionalDeduct2'] as int?) ?? 0,
-          additionalDeduct2Name: (data['additionalDeduct2Name'] as String?) ?? '',
-          additionalDeduct3: (data['additionalDeduct3'] as int?) ?? 0,
-          additionalDeduct3Name: (data['additionalDeduct3Name'] as String?) ?? '',
+          weeklyHours: 40, // 서버에 없는 필드는 기본값 사용
+          weekCount: 4,
+          bonus: ((data['bonus'] as num?)?.toDouble() ?? 0).round(),
+          additionalPay1: 0,
+          additionalPay1Name: '',
+          additionalPay2: 0,
+          additionalPay2Name: '',
+          additionalPay3: 0,
+          additionalPay3Name: '',
+          additionalDeduct1: 0,
+          additionalDeduct1Name: '',
+          additionalDeduct2: 0,
+          additionalDeduct2Name: '',
+          additionalDeduct3: 0,
+          additionalDeduct3Name: '',
         );
       } else if (response.statusCode == 404) {
         return null;
@@ -154,29 +156,15 @@ class ApiService {
     final body = {
       'employeeId': data.employeeId,
       'ym': data.ym,
-      'normalHours': data.normalHours,
+      'workHours': data.normalHours,
+      'bonus': data.bonus,
       'overtimeHours': data.overtimeHours,
       'nightHours': data.nightHours,
       'holidayHours': data.holidayHours,
-      'weeklyHours': data.weeklyHours,
-      'weekCount': data.weekCount,
-      'bonus': data.bonus,
-      'additionalPay1': data.additionalPay1,
-      'additionalPay1Name': data.additionalPay1Name,
-      'additionalPay2': data.additionalPay2,
-      'additionalPay2Name': data.additionalPay2Name,
-      'additionalPay3': data.additionalPay3,
-      'additionalPay3Name': data.additionalPay3Name,
-      'additionalDeduct1': data.additionalDeduct1,
-      'additionalDeduct1Name': data.additionalDeduct1Name,
-      'additionalDeduct2': data.additionalDeduct2,
-      'additionalDeduct2Name': data.additionalDeduct2Name,
-      'additionalDeduct3': data.additionalDeduct3,
-      'additionalDeduct3Name': data.additionalDeduct3Name,
     };
 
     final response = await http.post(
-      Uri.parse('$_serverUrl/employees/${data.employeeId}/monthly-data'),
+      Uri.parse('$_serverUrl/payroll/monthly/upsert'),
       headers: _headers,
       body: json.encode(body),
     );
