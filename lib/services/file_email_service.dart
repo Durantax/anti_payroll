@@ -241,7 +241,6 @@ class FileEmailService {
       result: result,
       year: year,
       month: month,
-      password: result.birthDate, // PDF 암호화에 생년월일 사용
     );
 
     final directory = await getApplicationDocumentsDirectory();
@@ -262,7 +261,6 @@ class FileEmailService {
     required SalaryResult result,
     required int year,
     required int month,
-    String? password, // 암호화용 비밀번호 (생년월일)
   }) async {
     final pdf = pw.Document();
 
@@ -325,7 +323,7 @@ class FileEmailService {
                 ),
                 pw.SizedBox(height: 10),
                 pw.Text(
-                  '※ PDF 비밀번호: 생년월일 6자리 (${result.birthDate})',
+                  '※ 본 문서는 기밀 정보를 포함하고 있습니다.',
                   style: pw.TextStyle(font: ttf, fontSize: 10, color: PdfColors.grey700),
                 ),
               ],
@@ -335,17 +333,9 @@ class FileEmailService {
       ),
     );
 
-    // PDF 저장 (암호화 포함)
-    if (password != null && password.isNotEmpty) {
-      return pdf.save(
-        pdfSecurity: PdfSecurity.encrypted(
-          userPassword: password,
-          ownerPassword: password,
-        ),
-      );
-    } else {
-      return pdf.save();
-    }
+    // PDF 저장
+    // 참고: pdf 패키지 버전에 따라 암호화 기능이 지원되지 않을 수 있음
+    return pdf.save();
   }
 
   static pw.Widget _buildPaymentTable(SalaryResult result, pw.Font font) {
