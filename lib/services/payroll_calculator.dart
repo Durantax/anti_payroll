@@ -116,9 +116,10 @@ class PayrollCalculator {
     }
 
     // 5. 주휴수당 (시급제만 계산, 월급제는 이미 포함되어 있음)
+    // 📌 주휴수당 지급 조건: 주 소정근로시간 15시간 이상 (근로기준법 제18조)
     int weeklyHolidayPay = 0;
     String weeklyHolidayFormula = '';
-    if (!isMonthlyWorker && monthly.weekCount > 0 && monthly.weeklyHours > 0) {
+    if (!isMonthlyWorker && monthly.weekCount > 0 && monthly.weeklyHours >= 15) {
       // 시급제만: 시급 × 1일 소정근로시간(최대 8시간) × 개근주수
       // 1일 소정근로시간 = 주 소정근로시간 ÷ 5일 (최대 8시간)
       final dailyHours = min(monthly.weeklyHours / 5, 8.0);
@@ -127,6 +128,8 @@ class PayrollCalculator {
           '${formatMoney(hourlyRate)}원 × ${dailyHours.toStringAsFixed(1)}시간 × ${monthly.weekCount}주';
     } else if (isMonthlyWorker) {
       weeklyHolidayFormula = '월급에 포함';
+    } else if (!isMonthlyWorker && monthly.weeklyHours > 0 && monthly.weeklyHours < 15) {
+      weeklyHolidayFormula = '주 15시간 미만 (지급 대상 아님)';
     }
 
     // 6. 상여금
@@ -313,12 +316,15 @@ class PayrollCalculator {
     final baseSalaryFormula = '${formatMoney(hourlyRate)}원 × ${normalHours.toStringAsFixed(0)}시간';
 
     // 2. 주휴수당 (개근주수 × 시급 × 주소정근로시간)
+    // 📌 주휴수당 지급 조건: 주 소정근로시간 15시간 이상 (근로기준법 제18조)
     int weeklyHolidayPay = 0;
     String weeklyHolidayFormula = '';
-    if (monthly.weekCount > 0) {
+    if (monthly.weekCount > 0 && monthly.weeklyHours >= 15) {
       weeklyHolidayPay = (hourlyRate * monthly.weeklyHours * monthly.weekCount).round();
       weeklyHolidayFormula =
           '${formatMoney(hourlyRate)}원 × ${monthly.weeklyHours.toStringAsFixed(0)}시간 × ${monthly.weekCount}주';
+    } else if (monthly.weeklyHours > 0 && monthly.weeklyHours < 15) {
+      weeklyHolidayFormula = '주 15시간 미만 (지급 대상 아님)';
     }
 
     // 3. 상여금
