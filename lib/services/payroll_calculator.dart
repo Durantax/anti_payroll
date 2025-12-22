@@ -59,14 +59,17 @@ class PayrollCalculator {
     // ===== 지급 항목 =====
 
     // 1. 기본급
-    // 월급제: 월급 그대로 사용
+    // 월급제: 월급 그대로 사용 (통상시급 계산식 표시)
     // 시급제: 시급 × 정상근로시간
     int baseSalary;
     String baseSalaryFormula;
     
     if (worker.salaryType == 'MONTHLY' && worker.monthlySalary > 0) {
       baseSalary = worker.monthlySalary;
-      baseSalaryFormula = '월급 ${formatMoney(worker.monthlySalary)}원';
+      // 월급제는 통상시급 계산식 포함
+      final weeklyHours = monthly.weeklyHours > 0 ? monthly.weeklyHours : 40.0;
+      final monthlyHours = weeklyHours * AppConstants.weeksPerMonth;
+      baseSalaryFormula = '월급 ${formatMoney(worker.monthlySalary)}원 (통상시급: ${formatMoney(hourlyRate)}원 = ${formatMoney(worker.monthlySalary)}원 ÷ ${monthlyHours.toStringAsFixed(1)}h)';
     } else {
       baseSalary = (hourlyRate * normalHours).round();
       baseSalaryFormula = '${formatMoney(hourlyRate)}원 × ${normalHours.toStringAsFixed(0)}시간';
