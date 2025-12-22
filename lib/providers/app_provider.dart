@@ -717,11 +717,18 @@ class AppProvider with ChangeNotifier {
 
     try {
       _setLoading(true);
+      
+      // 자동 경로 사용
+      final basePath = _settings?.downloadBasePath ?? '';
+      final useSubfolders = _settings?.useClientSubfolders ?? true;
+      
       await FileEmailService.generatePayslipPdf(
         client: _selectedClient!,
         result: result,
         year: selectedYear,
         month: selectedMonth,
+        customBasePath: basePath.isNotEmpty ? basePath : null,
+        useClientSubfolders: useSubfolders,
       );
       _setError(null);
     } catch (e) {
@@ -812,12 +819,17 @@ class AppProvider with ChangeNotifier {
     try {
       _setLoading(true);
 
-      // PDF 생성
+      // PDF 생성 (자동 경로 사용)
+      final basePath = _settings?.downloadBasePath ?? '';
+      final useSubfolders = _settings?.useClientSubfolders ?? true;
+      
       final pdfFile = await FileEmailService.generatePayslipPdf(
         client: _selectedClient!,
         result: result,
         year: selectedYear,
         month: selectedMonth,
+        customBasePath: basePath.isNotEmpty ? basePath : null,
+        useClientSubfolders: useSubfolders,
       );
 
       // 이메일 발송
