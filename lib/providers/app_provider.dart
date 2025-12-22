@@ -136,9 +136,7 @@ class AppProvider with ChangeNotifier {
 
   Future<void> updateDownloadPath(String basePath, bool useClientSubfolders) async {
     try {
-      _setLoading(true);
-      
-      // 로컬에만 저장 (서버에 저장하지 않음)
+      // 로컬에만 저장 (서버에 저장하지 않음, 로딩 상태 불필요)
       final updatedSettings = AppSettings(
         serverUrl: 'http://25.2.89.129:8000',  // 하드코딩
         apiKey: '',
@@ -152,8 +150,6 @@ class AppProvider with ChangeNotifier {
     } catch (e) {
       _setError('경로 저장 실패: $e');
       rethrow;
-    } finally {
-      _setLoading(false);
     }
   }
 
