@@ -23,6 +23,7 @@ from database import get_db_connection, fetch_all, fetch_one, execute_query
 from payroll_calculator import PayrollCalculator
 from pdf_generator import generate_payslip_pdf, generate_batch_pdfs
 from email_service import EmailService
+from db_init import initialize_database, check_tables_exist
 
 # CSS 스타일
 st.markdown("""
@@ -106,8 +107,39 @@ def format_money(amount):
 
 def load_clients():
     """거래처 목록 로드"""
-    sql = "SELECT Id, Name, BizId, Has5OrMoreWorkers FROM dbo.Clients ORDER BY Name"
-    return fetch_all(sql)
+    try:
+        sql = """
+            SELECT 
+                ID as Id, 
+                고객명 as Name, 
+                사업자등록번호 as BizId,
+                1 as Has5OrMoreWorkers
+            FROM 거래처 
+            WHERE 사용여부 IN ('O', 1)
+            ORDER BY 고객명
+        """
+        clients = fetch_all(sql)
+        
+        if not clients:
+            st.warning("⚠️ 등록된 거래처가 없습니다.")
+            st.info("💡 'database_perfect.py' 프로그램에서 거래처를 먼저 등록하세요.")
+        
+        return clients
+        
+    except Exception as e:
+        error_msg = str(e)
+        if "거래처" in error_msg or "개체 이름" in error_msg:
+            st.error("❌ '거래처' 테이블을 찾을 수 없습니다.")
+            st.info("""
+            💡 해결 방법:
+            1. 'database_perfect.py' 프로그램이 사용하는 데이터베이스인지 확인
+            2. '거래처' 테이블이 생성되어 있는지 확인
+            3. 데이터베이스 연결 정보가 올바른지 확인 (서버: 25.2.89.129, DB: 기본정보)
+            """)
+        else:
+            st.error(f"❌ 거래처 목록 로드 실패: {error_msg}")
+        
+        return []
 
 
 def load_workers(client_id, year, month):
@@ -115,16 +147,44 @@ def load_workers(client_id, year, month):
     ym = f"{year:04d}-{month:02d}"
     sql = """
         SELECT 
-            e.*,
-            m.NormalHours, m.OvertimeHours, m.NightHours, m.HolidayHours,
-            m.WeeklyHours, m.WeekCount, m.Bonus,
-            m.AdditionalPay1, m.AdditionalPay2, m.AdditionalPay3,
-            m.AdditionalDeduct1, m.AdditionalDeduct2, m.AdditionalDeduct3
-        FROM dbo.Employees e
-        LEFT JOIN dbo.PayrollMonthlyInput m 
-            ON e.Id = m.EmployeeId AND m.Ym = ?
-        WHERE e.ClientId = ?
-        ORDER BY e.Name
+            e.ID as Id,
+            e.거래처ID as ClientId,
+            e.이름 as Name,
+            e.생년월일 as BirthDate,
+            e.고용형태 as EmploymentType,
+            e.급여형태 as SalaryType,
+            e.월급여 as MonthlySalary,
+            e.시급 as HourlyRate,
+            e.소정근로시간 as NormalHours,
+            e.식대 as FoodAllowance,
+            e.차량유지비 as CarAllowance,
+            e.가입4대보험 as Has4Insurance,
+            e.부양가족수 as TaxDependents,
+            e.자녀수 as ChildrenCount,
+            e.비과세식대 as TaxFreeMeal,
+            e.비과세차량 as TaxFreeCarMaintenance,
+            e.기타비과세 as OtherTaxFree,
+            e.소득세율 as IncomeTaxRate,
+            e.이메일 as Email,
+            e.전화번호 as Phone,
+            m.정상근로시간 as NormalWorkHours,
+            m.연장근로시간 as OvertimeHours,
+            m.야간근로시간 as NightHours,
+            m.휴일근로시간 as HolidayHours,
+            m.주소정근로시간 as WeeklyHours,
+            m.주수 as WeekCount,
+            m.상여금 as Bonus,
+            m.추가지급1 as AdditionalPay1,
+            m.추가지급2 as AdditionalPay2,
+            m.추가지급3 as AdditionalPay3,
+            m.추가공제1 as AdditionalDeduct1,
+            m.추가공제2 as AdditionalDeduct2,
+            m.추가공제3 as AdditionalDeduct3
+        FROM 직원 e
+        LEFT JOIN 월별근로데이터 m 
+            ON e.ID = m.직원ID AND m.년월 = ?
+        WHERE e.거래처ID = ?
+        ORDER BY e.이름
     """
     workers = fetch_all(sql, (ym, client_id))
     
@@ -189,7 +249,28 @@ def main():
     conn = get_db_connection()
     if not conn:
         st.error("❌ 데이터베이스에 연결할 수 없습니다. 서버 설정을 확인하세요.")
+        st.info("💡 설정 탭에서 '데이터베이스 연결 진단' 기능을 사용하세요.")
         return
+    
+    # DB 스키마 초기화 (필요한 테이블이 없으면 생성)
+    if 'db_initialized' not in st.session_state:
+        with st.spinner("데이터베이스 테이블 확인 중..."):
+            all_exist, existing_tables = check_tables_exist()
+            
+            if not all_exist:
+                st.info("📊 급여관리에 필요한 테이블을 생성하는 중...")
+                success, message = initialize_database()
+                
+                if success:
+                    st.success("✅ 데이터베이스 초기화 완료!")
+                    with st.expander("초기화 상세 로그"):
+                        st.text(message)
+                else:
+                    st.error(f"❌ 데이터베이스 초기화 실패: {message}")
+                    st.warning("⚠️ 데이터베이스 관리자 권한이 필요할 수 있습니다.")
+                    return
+            
+            st.session_state.db_initialized = True
     
     # 사이드바: 거래처 선택 및 날짜 설정
     with st.sidebar:
