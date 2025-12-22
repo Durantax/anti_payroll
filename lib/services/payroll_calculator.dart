@@ -241,10 +241,9 @@ class PayrollCalculator {
       taxRateLabel = ' × 120%';
     }
     
-    // 소득세 공식 설명 (간이세액표 + 자녀공제 + 세율 적용)
-    String childLabel = worker.childrenCount > 0 ? ', 자녀 ${worker.childrenCount}명' : '';
-    incomeTaxFormula = '간이세액표 (월 ${formatMoney(monthlyTaxableIncome)}원, 가족 ${taxDependents}인$childLabel)$taxRateLabel';
-    localTaxFormula = '소득세 × 10%';
+    // 소득세 공식 설명 (명세서에는 표시 안 함, 프리랜서만 3.3% 표시)
+    incomeTaxFormula = ''; // 근로소득세는 명세서에 계산식 표시 안 함
+    localTaxFormula = ''; // 지방소득세도 명세서에 계산식 표시 안 함
 
     // 7. 추가공제
     final additionalDeduct1 = monthly.additionalDeduct1;
