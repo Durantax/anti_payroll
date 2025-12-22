@@ -215,7 +215,7 @@ class FileEmailService {
     required int year,
     required int month,
     required List<SalaryResult> results,
-    String? customBasePath, // null이면 사용자가 직접 선택
+    required String basePath, // 기본 경로 필수
     bool useClientSubfolders = true,
   }) async {
     final rows = <List<String>>[];
@@ -266,45 +266,23 @@ class FileEmailService {
 
     final csv = const ListToCsvConverter().convert(rows);
     
-    final fileName = '${clientName}_${year}년${month}월_급여대장.csv';
-    String? outputPath;
+    // 자동 경로 생성
+    final filePath = PathHelper.getFilePath(
+      basePath: basePath,
+      clientName: clientName,
+      year: year,
+      month: month,
+      fileType: 'csv',
+      useClientSubfolders: useClientSubfolders,
+    );
     
-    if (customBasePath != null && customBasePath.isNotEmpty) {
-      // 설정된 기본 경로 사용
-      final filePath = PathHelper.getFilePath(
-        basePath: customBasePath,
-        clientName: clientName,
-        year: year,
-        month: month,
-        fileType: 'csv',
-        useClientSubfolders: useClientSubfolders,
-      );
-      
-      // 폴더 생성
-      final directory = Directory(filePath).parent;
-      await PathHelper.ensureDirectoryExists(directory.path);
-      
-      outputPath = filePath;
-    } else {
-      // 사용자가 직접 저장 위치 선택
-      outputPath = await FilePicker.platform.saveFile(
-        dialogTitle: 'CSV 파일 저장',
-        fileName: fileName,
-        type: FileType.custom,
-        allowedExtensions: ['csv'],
-      );
-    }
+    // 폴더 생성
+    final directory = Directory(filePath).parent;
+    await PathHelper.ensureDirectoryExists(directory.path);
 
-    if (outputPath == null) {
-      throw Exception('파일 저장이 취소되었습니다.');
-    }
-
-    final file = File(outputPath);
+    // 파일 저장 (덮어쓰기)
+    final file = File(filePath);
     await file.writeAsString('\uFEFF$csv'); // UTF-8 BOM
-
-    if (Platform.isWindows) {
-      await Process.run('explorer', ['/select,', file.path]);
-    }
 
     return file;
   }
@@ -539,7 +517,7 @@ class FileEmailService {
     required SalaryResult result,
     required int year,
     required int month,
-    String? customBasePath, // null이면 사용자가 직접 선택
+    required String basePath, // 기본 경로 필수
     bool useClientSubfolders = true,
   }) async {
     final pdfBytes = await _generatePdfBytes(
@@ -549,47 +527,24 @@ class FileEmailService {
       month: month,
     );
 
-    final fileName = '${client.name}_${result.workerName}_${year}년${month}월_급여명세서.pdf';
-    String? outputPath;
+    // 자동 경로 생성
+    final filePath = PathHelper.getFilePath(
+      basePath: basePath,
+      clientName: client.name,
+      year: year,
+      month: month,
+      fileType: 'pdf_payslip',
+      workerName: result.workerName,
+      useClientSubfolders: useClientSubfolders,
+    );
     
-    if (customBasePath != null && customBasePath.isNotEmpty) {
-      // 설정된 기본 경로 사용
-      final filePath = PathHelper.getFilePath(
-        basePath: customBasePath,
-        clientName: client.name,
-        year: year,
-        month: month,
-        fileType: 'pdf_payslip',
-        workerName: result.workerName,
-        useClientSubfolders: useClientSubfolders,
-      );
-      
-      // 폴더 생성
-      final directory = Directory(filePath).parent;
-      await PathHelper.ensureDirectoryExists(directory.path);
-      
-      outputPath = filePath;
-    } else {
-      // 사용자가 직접 저장 위치 선택
-      outputPath = await FilePicker.platform.saveFile(
-        dialogTitle: '급여명세서 저장',
-        fileName: fileName,
-        type: FileType.custom,
-        allowedExtensions: ['pdf'],
-      );
-    }
+    // 폴더 생성
+    final directory = Directory(filePath).parent;
+    await PathHelper.ensureDirectoryExists(directory.path);
 
-    if (outputPath == null) {
-      throw Exception('파일 저장이 취소되었습니다.');
-    }
-
-    final file = File(outputPath);
+    // 파일 저장 (덮어쓰기)
+    final file = File(filePath);
     await file.writeAsBytes(pdfBytes);
-
-    // Windows 기본 뷰어로 열기 (일괄생성 아닐 때만)
-    if (Platform.isWindows && customBasePath == null) {
-      await Process.run('cmd', ['/c', 'start', '', file.path], runInShell: true);
-    }
 
     return file;
   }
