@@ -181,39 +181,39 @@ class PayrollCalculator {
 
     // ===== 공제 항목 =====
 
-    // 1. 국민연금 (4.5%)
+    // 1. 국민연금 (4.5%) - 10원 미만 절사
     int nationalPension = 0;
     String pensionFormula = '';
     if (worker.hasNationalPension) {
       final pensionBase = worker.pensionInsurableWage ?? insuranceBase;
-      nationalPension = (pensionBase * AppConstants.pensionRate).round();
+      nationalPension = ((pensionBase * AppConstants.pensionRate) ~/ 10) * 10; // 10원 미만 절사
       pensionFormula = '${formatMoney(pensionBase)}원 × 4.5%';
     }
 
-    // 2. 건강보험 (3.545%)
+    // 2. 건강보험 (3.545%) - 10원 미만 절사
     int healthInsurance = 0;
     String healthFormula = '';
     if (worker.hasHealthInsurance) {
       final healthBase = worker.healthInsuranceBasis == 'salary'
           ? insuranceBase
           : (worker.pensionInsurableWage ?? insuranceBase);
-      healthInsurance = (healthBase * AppConstants.healthRate).round();
+      healthInsurance = ((healthBase * AppConstants.healthRate) ~/ 10) * 10; // 10원 미만 절사
       healthFormula = '${formatMoney(healthBase)}원 × 3.545%';
     }
 
-    // 3. 장기요양 (12.95%)
+    // 3. 장기요양 (12.95%) - 10원 미만 절사
     int longTermCare = 0;
     String longTermCareFormula = '';
     if (worker.hasHealthInsurance) {
-      longTermCare = (healthInsurance * AppConstants.longTermCareRate).round();
+      longTermCare = ((healthInsurance * AppConstants.longTermCareRate) ~/ 10) * 10; // 10원 미만 절사
       longTermCareFormula = '${formatMoney(healthInsurance)}원 × 12.95%';
     }
 
-    // 4. 고용보험 (0.9%)
+    // 4. 고용보험 (0.9%) - 10원 미만 절사
     int employmentInsurance = 0;
     String employmentFormula = '';
     if (worker.hasEmploymentInsurance) {
-      employmentInsurance = (insuranceBase * AppConstants.employmentRate).round();
+      employmentInsurance = ((insuranceBase * AppConstants.employmentRate) ~/ 10) * 10; // 10원 미만 절사
       employmentFormula = '${formatMoney(insuranceBase)}원 × 0.9%';
     }
 
@@ -350,14 +350,15 @@ class PayrollCalculator {
 
     // ===== 공제 항목 =====
 
-    // 1. 소득세 (3.3% - 1의 자리 절사)
-    final incomeTaxRaw = (totalPayment * AppConstants.incomeTaxRate).round();
-    final incomeTax = (incomeTaxRaw ~/ 10) * 10; // 1의 자리 절사
-    final incomeTaxFormula = '${formatMoney(totalPayment)}원 × 3.3%';
+    // 1. 소득세 (3.0% - 10원 미만 절사)
+    final incomeTaxRaw = (totalPayment * 0.03);
+    final incomeTax = (incomeTaxRaw ~/ 10) * 10; // 10원 미만 절사
+    final incomeTaxFormula = '${formatMoney(totalPayment)}원 × 3.0%';
 
-    // 프리랜서는 지방소득세 없음 (3.3%에 포함)
-    final localIncomeTax = 0;
-    final localTaxFormula = '';
+    // 2. 지방소득세 (0.3% - 10원 미만 절사)
+    final localIncomeTaxRaw = (totalPayment * 0.003);
+    final localIncomeTax = (localIncomeTaxRaw ~/ 10) * 10; // 10원 미만 절사
+    final localTaxFormula = '${formatMoney(totalPayment)}원 × 0.3%';
 
     // 2. 추가공제
     final additionalDeduct1 = monthly.additionalDeduct1;
