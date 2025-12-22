@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../core/models.dart';
 import '../providers/app_provider.dart';
 
@@ -17,7 +19,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -46,6 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               tabs: const [
                 Tab(text: '서버 설정'),
                 Tab(text: 'SMTP 설정'),
+                Tab(text: '파일 저장 경로'),
               ],
             ),
             Expanded(
@@ -54,6 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 children: [
                   _ServerSettingsTab(),
                   _SmtpSettingsTab(),
+                  _FilePathSettingsTab(),
                 ],
               ),
             ),
@@ -389,6 +393,311 @@ class _SmtpSettingsTabState extends State<_SmtpSettingsTab> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('SMTP 설정이 저장되었습니다')),
         );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('저장 실패: $e')),
+        );
+      }
+    }
+  }
+}
+
+// ========== 파일 저장 경로 설정 탭 ==========
+
+class _FilePathSettingsTab extends StatefulWidget {
+  @override
+  State<_FilePathSettingsTab> createState() => _FilePathSettingsTabState();
+}
+
+class _FilePathSettingsTabState extends State<_FilePathSettingsTab> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _pathController;
+  bool _useClientSubfolders = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final provider = context.read<AppProvider>();
+    final settings = provider.settings;
+    
+    _pathController = TextEditingController(
+      text: settings?.downloadBasePath ?? _getDefaultPath(),
+    );
+    _useClientSubfolders = settings?.useClientSubfolders ?? true;
+  }
+
+  @override
+  void dispose() {
+    _pathController.dispose();
+    super.dispose();
+  }
+
+  String _getDefaultPath() {
+    if (Platform.isWindows) {
+      final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\Users\\Default';
+      return '$userProfile\\Documents\\급여관리프로그램';
+    }
+    return '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '파일 저장 경로 설정',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'PDF, CSV 파일을 자동으로 저장할 기본 경로를 설정합니다.',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            
+            // 경로 입력
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _pathController,
+                    decoration: const InputDecoration(
+                      labelText: '기본 저장 경로',
+                      border: OutlineInputBorder(),
+                      hintText: 'C:\\Users\\사용자\\Documents\\급여관리프로그램',
+                      helperText: '파일이 자동으로 저장될 폴더를 선택하세요',
+                    ),
+                    validator: (v) {
+                      if (v?.isEmpty ?? true) return '경로를 입력하세요';
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: _selectFolder,
+                  icon: const Icon(Icons.folder_open),
+                  label: const Text('폴더 선택'),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // 거래처 하위 폴더 옵션
+            Card(
+              child: CheckboxListTile(
+                title: const Text('거래처별 하위 폴더 생성'),
+                subtitle: const Text('예: 급여관리프로그램\\삼성전자\\2025\\'),
+                value: _useClientSubfolders,
+                onChanged: (value) => setState(() => _useClientSubfolders = value ?? true),
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // 안내 정보
+            Card(
+              color: Colors.blue[50],
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text(
+                          '파일 저장 구조',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (_useClientSubfolders) ...[
+                      const Text('✅ 거래처 하위 폴더 사용 시:'),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_pathController.text}\\거래처명\\연도\\파일명',
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text('예시:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        '${_pathController.text}\\삼성전자\\2025\\',
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      ),
+                      const Text(
+                        '  ├─ 삼성전자_2025년12월_급여대장.csv',
+                        style: TextStyle(fontFamily: 'monospace', fontSize: 11),
+                      ),
+                      const Text(
+                        '  ├─ 삼성전자_2025년12월_급여대장.pdf',
+                        style: TextStyle(fontFamily: 'monospace', fontSize: 11),
+                      ),
+                      const Text(
+                        '  └─ 삼성전자_홍길동_2025년12월_급여명세서.pdf',
+                        style: TextStyle(fontFamily: 'monospace', fontSize: 11),
+                      ),
+                    ] else ...[
+                      const Text('❌ 거래처 하위 폴더 미사용 시:'),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_pathController.text}\\파일명',
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text('모든 파일이 한 폴더에 저장됩니다.'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // OneDrive 안내
+            Card(
+              color: Colors.green[50],
+              child: const Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.cloud, color: Colors.green),
+                        SizedBox(width: 8),
+                        Text(
+                          'OneDrive 공유 폴더 사용 가능',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text('✅ OneDrive 폴더를 경로로 설정하면 자동 동기화됩니다'),
+                    Text('✅ 여러 컴퓨터에서 동일한 파일 접근 가능'),
+                    SizedBox(height: 8),
+                    Text(
+                      '예: C:\\Users\\사용자\\OneDrive\\급여관리프로그램',
+                      style: TextStyle(fontFamily: 'monospace', fontSize: 12),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      '⚠️ 주의: 동시 작업 시 충돌 가능 (한 번에 한 컴퓨터만 사용)',
+                      style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 24),
+            
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('닫기'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: _resetToDefault,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('기본값으로'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _save,
+                  child: const Text('저장'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectFolder() async {
+    final selectedDirectory = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: '파일 저장 경로 선택',
+      initialDirectory: _pathController.text.isNotEmpty ? _pathController.text : null,
+    );
+
+    if (selectedDirectory != null) {
+      setState(() {
+        _pathController.text = selectedDirectory;
+      });
+    }
+  }
+
+  void _resetToDefault() {
+    setState(() {
+      _pathController.text = _getDefaultPath();
+      _useClientSubfolders = true;
+    });
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      // 경로 존재 확인
+      final directory = Directory(_pathController.text);
+      if (!directory.existsSync()) {
+        final create = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('폴더 생성'),
+            content: Text('${_pathController.text}\n\n폴더가 존재하지 않습니다. 생성하시겠습니까?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('취소'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('생성'),
+              ),
+            ],
+          ),
+        );
+
+        if (create == true) {
+          directory.createSync(recursive: true);
+        } else {
+          return;
+        }
+      }
+
+      await context.read<AppProvider>().updateDownloadPath(
+            _pathController.text,
+            _useClientSubfolders,
+          );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('파일 저장 경로가 설정되었습니다'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {

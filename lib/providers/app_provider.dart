@@ -150,6 +150,39 @@ class AppProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _setError('SMTP 설정 저장 실패: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> updateDownloadPath(String basePath, bool useClientSubfolders) async {
+    try {
+      _setLoading(true);
+      
+      // 기존 설정에 경로 정보 추가
+      final updatedSettings = AppSettings(
+        serverUrl: _appSettings?.serverUrl ?? '',
+        apiKey: _appSettings?.apiKey ?? '',
+        downloadBasePath: basePath,
+        useClientSubfolders: useClientSubfolders,
+      );
+      
+      await _apiService.saveAppSettings(updatedSettings);
+      _appSettings = updatedSettings;
+      _setError(null);
+      notifyListeners();
+    } catch (e) {
+      _setError('경로 저장 실패: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+      _setError(null);
+      notifyListeners();
+    } catch (e) {
+      _setError('SMTP 설정 저장 실패: $e');
     } finally {
       _setLoading(false);
     }
