@@ -263,13 +263,19 @@ class _FilePathSettingsTabState extends State<_FilePathSettingsTab> {
   String _getDefaultPath() {
     if (Platform.isWindows) {
       final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\Users\\Default';
-      // OneDrive 문서 폴더 우선, 없으면 일반 Documents
-      final oneDrivePath = '$userProfile\\OneDrive\\문서\\급여관리프로그램';
-      final oneDriveDir = Directory(oneDrivePath);
-      if (oneDriveDir.parent.existsSync()) {
-        return oneDrivePath;
+      
+      // OneDrive 문서 폴더 우선 (한글 "문서" 먼저, 그 다음 영문 "Documents")
+      final oneDriveKorean = '$userProfile\\OneDrive\\문서\\급여관리프로그램';
+      final oneDriveEnglish = '$userProfile\\OneDrive\\Documents\\급여관리프로그램';
+      final regularDocs = '$userProfile\\Documents\\급여관리프로그램';
+      
+      if (Directory(oneDriveKorean).parent.existsSync()) {
+        return oneDriveKorean;
+      } else if (Directory(oneDriveEnglish).parent.existsSync()) {
+        return oneDriveEnglish;
+      } else {
+        return regularDocs;
       }
-      return '$userProfile\\Documents\\급여관리프로그램';
     }
     return '';
   }

@@ -6,7 +6,7 @@ class PathHelper {
   /// 기본 다운로드 경로 생성
   /// 
   /// 우선순위:
-  /// 1. OneDrive 문서 폴더 (C:\Users\사용자\OneDrive\문서)
+  /// 1. OneDrive 문서 폴더 (C:\Users\사용자\OneDrive\문서 또는 OneDrive\Documents)
   /// 2. 일반 Documents 폴더 (C:\Users\사용자\Documents)
   /// 
   /// 예시:
@@ -19,15 +19,17 @@ class PathHelper {
     if (Platform.isWindows) {
       final userProfile = Platform.environment['USERPROFILE'] ?? '';
       
-      // OneDrive 문서 폴더 우선 체크
-      final oneDrivePath = path.join(userProfile, 'OneDrive', '문서');
-      final oneDriveDir = Directory(oneDrivePath);
+      // OneDrive 문서 폴더 우선 체크 (한글 "문서" 먼저, 그 다음 영문 "Documents")
+      final oneDriveKorean = path.join(userProfile, 'OneDrive', '문서');
+      final oneDriveEnglish = path.join(userProfile, 'OneDrive', 'Documents');
+      final regularDocs = path.join(userProfile, 'Documents');
       
-      if (oneDriveDir.existsSync()) {
-        documentsPath = oneDrivePath;
+      if (Directory(oneDriveKorean).existsSync()) {
+        documentsPath = oneDriveKorean;
+      } else if (Directory(oneDriveEnglish).existsSync()) {
+        documentsPath = oneDriveEnglish;
       } else {
-        // OneDrive 없으면 일반 Documents 사용
-        documentsPath = path.join(userProfile, 'Documents');
+        documentsPath = regularDocs;
       }
     } else if (Platform.isMacOS) {
       // macOS: /Users/사용자/Documents
