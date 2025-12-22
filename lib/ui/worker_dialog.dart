@@ -315,16 +315,50 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
         children: [
           const Text('━━━ 기본 정보 ━━━', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
+          // 💡 급여형태 자동 판단 안내
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '💡 시급이 0원이면 자동으로 월급제로 계산됩니다',
+                    style: TextStyle(fontSize: 13, color: Colors.blue.shade900),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           TextFormField(
             controller: _monthlySalaryController,
-            decoration: const InputDecoration(labelText: '* 월급여', border: OutlineInputBorder(), suffixText: '원'),
+            decoration: const InputDecoration(
+              labelText: '* 월급여',
+              border: OutlineInputBorder(),
+              suffixText: '원',
+              helperText: '월급제 직원의 고정 월급',
+              helperMaxLines: 2,
+            ),
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _hourlyRateController,
-            decoration: const InputDecoration(labelText: '* 시급', border: OutlineInputBorder(), suffixText: '원'),
+            decoration: const InputDecoration(
+              labelText: '* 시급',
+              border: OutlineInputBorder(),
+              suffixText: '원',
+              helperText: '시급제는 입력 / 월급제는 0원 입력 (자동 계산됨)',
+              helperMaxLines: 2,
+            ),
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),

@@ -315,7 +315,21 @@ class _MainScreenContentState extends State<MainScreenContent> {
               DataCell(Text(worker.birthDate)),
               DataCell(Text(worker.employmentType == 'regular' ? '근로소득' : '사업소득')),
               DataCell(Text('${formatMoney(worker.monthlySalary)}원')),
-              DataCell(Text('${formatMoney(worker.hourlyRate)}원')),
+              DataCell(
+                worker.hourlyRate == 0 && worker.monthlySalary > 0
+                  ? Tooltip(
+                      message: '월급제 - 통상시급 자동 계산됨',
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('${formatMoney(worker.hourlyRate)}원'),
+                          const SizedBox(width: 4),
+                          Icon(Icons.auto_awesome, size: 16, color: Colors.blue.shade600),
+                        ],
+                      ),
+                    )
+                  : Text('${formatMoney(worker.hourlyRate)}원'),
+              ),
               DataCell(Text(result != null ? '${formatMoney(result.totalPayment)}원' : '-')),
               DataCell(Text(result != null ? '${formatMoney(result.totalDeduction)}원' : '-')),
               DataCell(Text(result != null ? '${formatMoney(result.netPayment)}원' : '-')),
