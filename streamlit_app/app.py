@@ -925,87 +925,359 @@ def save_monthly_data_from_session(employee_id, ym):
 
 
 def show_employee_management(workers, selected_client):
-    """직원 관리 탭"""
+    """직원 관리 탭 - Flutter 스타일 (왼쪽 리스트 + 오른쪽 편집)"""
     st.header("👥 직원 관리")
     
-    # 액션 버튼
-    col1, col2, col3 = st.columns([2, 2, 6])
-    with col1:
-        if st.button("➕ 직원 추가", use_container_width=True):
-            st.session_state.show_employee_form = True
-            st.session_state.editing_employee_id = None
-    with col2:
-        if st.button("🔄 새로고침", use_container_width=True):
+    # 직원이 없으면 추가 안내
+    if not workers:
+        st.info("등록된 직원이 없습니다.")
+        if st.button("➕ 직원 추가", type="primary", use_container_width=True):
+            st.session_state.selected_employee_id = 'new'
             st.rerun()
+        return
     
-    # 직원 추가/수정 폼
-    if st.session_state.get('show_employee_form', False):
-        show_employee_form(selected_client, st.session_state.get('editing_employee_id'))
+    # 왼쪽(리스트) + 오른쪽(편집) 레이아웃
+    left_col, right_col = st.columns([1, 2])
+    
+    with left_col:
+        st.subheader(f"📋 직원 목록 ({len(workers)}명)")
+        
+        # 직원 추가 버튼
+        if st.button("➕ 직원 추가", type="primary", use_container_width=True):
+            st.session_state.selected_employee_id = 'new'
+            st.rerun()
+        
+        st.divider()
+        
+        # 직원 리스트 (카드 형식)
+        for worker in workers:
+            # 선택된 직원 표시
+            is_selected = st.session_state.get('selected_employee_id') == worker['Id']
+            
+            # 급여 정보
+            salary_info = ""
+            if worker.get('SalaryType') == 'MONTHLY':
+                salary_info = f"월급 {format_money(worker.get('MonthlySalary', 0))}"
+            else:
+                salary_info = f"시급 {format_money(worker.get('HourlyRate', 0))}"
+            
+            # 직원 카드 스타일
+            card_style = """
+            <div style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 10px;
+                padding: 15px;
+                margin-bottom: 10px;
+                cursor: pointer;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                border: 3px solid #27ae60;
+            ">
+                <div style="color: white; font-size: 16px; font-weight: bold;">
+                    👤 {name}
+                </div>
+                <div style="color: #f0f0f0; font-size: 13px; margin-top: 5px;">
+                    🎂 {birth_date} | {employment_type}
+                </div>
+                <div style="color: #ffd700; font-size: 14px; margin-top: 5px; font-weight: bold;">
+                    💰 {salary}
+                </div>
+            </div>
+            """ if is_selected else """
+            <div style="
+                background: white;
+                border-radius: 10px;
+                padding: 15px;
+                margin-bottom: 10px;
+                cursor: pointer;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+                border-left: 4px solid #3498db;
+            ">
+                <div style="color: #2c3e50; font-size: 16px; font-weight: bold;">
+                    👤 {name}
+                </div>
+                <div style="color: #7f8c8d; font-size: 13px; margin-top: 5px;">
+                    🎂 {birth_date} | {employment_type}
+                </div>
+                <div style="color: #27ae60; font-size: 14px; margin-top: 5px; font-weight: bold;">
+                    💰 {salary}
+                </div>
+            </div>
+            """
+            
+            employment_display = "정규직" if worker.get('EmploymentType') == 'REGULAR' else "프리랜서"
+            
+            st.markdown(
+                card_style.format(
+                    name=worker['Name'],
+                    birth_date=worker['BirthDate'],
+                    employment_type=employment_display,
+                    salary=salary_info
+                ),
+                unsafe_allow_html=True
+            )
+            
+            # 클릭하면 선택
+            if st.button(
+                "선택",
+                key=f"select_{worker['Id']}",
+                use_container_width=True
+            ):
+                st.session_state.selected_employee_id = worker['Id']
+                st.rerun()
+    
+    with right_col:
+        # 선택된 직원에 따라 편집 폼 표시
+        selected_id = st.session_state.get('selected_employee_id')
+        
+        if selected_id == 'new':
+            show_employee_form(selected_client, None)
+        elif selected_id:
+            # 선택된 직원 찾기
+            selected_worker = next((w for w in workers if w['Id'] == selected_id), None)
+            if selected_worker:
+                show_employee_edit_form(selected_client, selected_worker)
+            else:
+                st.warning("선택된 직원을 찾을 수 없습니다.")
+        else:
+            st.info("👈 왼쪽에서 직원을 선택하거나 '직원 추가'를 클릭하세요.")
+
+
+def show_employee_edit_form(selected_client, worker):
+    """선택된 직원 편집 폼 (오른쪽 패널)"""
+    
+    # 헤더
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.subheader(f"✏️ {worker['Name']} 님")
+    with col2:
+        if st.button("🗑️ 삭제", type="secondary", use_container_width=True):
+            if delete_employee(worker['Id']):
+                st.success(f"✅ {worker['Name']}님이 삭제되었습니다.")
+                st.session_state.selected_employee_id = None
+                st.rerun()
+            else:
+                st.error("❌ 삭제 실패")
     
     st.divider()
     
-    # 직원 목록 표시
-    if not workers:
-        st.info("등록된 직원이 없습니다. '직원 추가' 버튼을 클릭하세요.")
-        return
-    
-    st.subheader(f"📋 직원 목록 ({len(workers)}명)")
-    
-    # 직원 카드 형식으로 표시
-    for worker in workers:
-        with st.expander(
-            f"👤 {worker['Name']} ({worker['BirthDate']}) - "
-            f"{worker.get('SalaryType', 'HOURLY')} - "
-            f"{format_money(worker.get('MonthlySalary', 0) or worker.get('HourlyRate', 0))}원"
-        ):
-            col1, col2 = st.columns([4, 1])
+    with st.form(f"employee_edit_form_{worker['Id']}"):
+        # 기본 정보
+        st.write("**📋 기본 정보**")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            name = st.text_input("이름*", value=worker.get('Name', ''))
+            birth_date = st.text_input("생년월일 (YYMMDD)*", value=worker.get('BirthDate', ''))
+        
+        with col2:
+            employment_type = st.selectbox(
+                "고용형태*",
+                options=['REGULAR', 'FREELANCE'],
+                index=0 if worker.get('EmploymentType') == 'REGULAR' else 1,
+                format_func=lambda x: '정규직' if x == 'REGULAR' else '프리랜서'
+            )
             
-            with col1:
-                # 기본 정보
-                st.write("**📋 기본 정보**")
-                info_col1, info_col2, info_col3 = st.columns(3)
-                with info_col1:
-                    st.text(f"이름: {worker['Name']}")
-                    st.text(f"생년월일: {worker['BirthDate']}")
-                with info_col2:
-                    st.text(f"급여형태: {worker.get('SalaryType', 'HOURLY')}")
-                    st.text(f"고용형태: {worker.get('EmploymentType', 'REGULAR')}")
-                with info_col3:
-                    if worker.get('SalaryType') == 'MONTHLY':
-                        st.text(f"월급: {format_money(worker.get('MonthlySalary', 0))}원")
-                    else:
-                        st.text(f"시급: {format_money(worker.get('HourlyRate', 0))}원")
-                
-                # 4대보험
-                st.write("**💳 4대보험**")
-                insurance_col1, insurance_col2, insurance_col3 = st.columns(3)
-                with insurance_col1:
-                    st.text(f"국민연금: {'✅' if worker.get('HasNationalPension') else '❌'}")
-                with insurance_col2:
-                    st.text(f"건강보험: {'✅' if worker.get('HasHealthInsurance') else '❌'}")
-                with insurance_col3:
-                    st.text(f"고용보험: {'✅' if worker.get('HasEmploymentInsurance') else '❌'}")
-                
-                # 이메일
-                if worker.get('UseEmail'):
-                    st.write("**📧 이메일**")
-                    st.text(f"발송: {worker.get('EmailTo', '-')}")
-                    if worker.get('EmailCc'):
-                        st.text(f"참조: {worker['EmailCc']}")
-            
-            with col2:
-                # 액션 버튼
-                if st.button("✏️ 수정", key=f"edit_{worker['Id']}", use_container_width=True):
-                    st.session_state.show_employee_form = True
-                    st.session_state.editing_employee_id = worker['Id']
+            salary_type = st.selectbox(
+                "급여형태*",
+                options=['MONTHLY', 'HOURLY'],
+                index=0 if worker.get('SalaryType') == 'MONTHLY' else 1,
+                format_func=lambda x: '월급제' if x == 'MONTHLY' else '시급제'
+            )
+        
+        with col3:
+            if salary_type == 'MONTHLY':
+                monthly_salary = st.number_input(
+                    "월급여*", 
+                    min_value=0, 
+                    value=int(worker.get('MonthlySalary', 0)),
+                    step=10000
+                )
+                hourly_rate = 0
+            else:
+                hourly_rate = st.number_input(
+                    "시급*", 
+                    min_value=0, 
+                    value=int(worker.get('HourlyRate', 0)),
+                    step=100
+                )
+                monthly_salary = 0
+        
+        st.divider()
+        
+        # 수당 정보
+        st.write("**💵 수당 정보**")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            food_allowance = st.number_input(
+                "식대 (월)",
+                min_value=0,
+                value=int(worker.get('FoodAllowance', 0)),
+                step=10000
+            )
+        
+        with col2:
+            car_allowance = st.number_input(
+                "차량유지비 (월)",
+                min_value=0,
+                value=int(worker.get('CarAllowance', 0)),
+                step=10000
+            )
+        
+        st.divider()
+        
+        # 4대보험
+        st.write("**💳 4대보험 가입 여부**")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            has_pension = st.checkbox(
+                "국민연금", 
+                value=bool(worker.get('HasNationalPension', True))
+            )
+        with col2:
+            has_health = st.checkbox(
+                "건강보험", 
+                value=bool(worker.get('HasHealthInsurance', True))
+            )
+        with col3:
+            has_employment = st.checkbox(
+                "고용보험", 
+                value=bool(worker.get('HasEmploymentInsurance', True))
+            )
+        
+        st.divider()
+        
+        # 세금 관련
+        st.write("**💰 세금 관련**")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            tax_dependents = st.number_input(
+                "공제대상 가족수 (본인 포함)",
+                min_value=1,
+                max_value=20,
+                value=int(worker.get('TaxDependents', 1))
+            )
+        with col2:
+            children_count = st.number_input(
+                "8~20세 자녀수",
+                min_value=0,
+                max_value=10,
+                value=int(worker.get('ChildrenCount', 0))
+            )
+        with col3:
+            income_tax_rate = st.selectbox(
+                "소득세율",
+                options=[80, 100, 120],
+                index=[80, 100, 120].index(int(worker.get('IncomeTaxRate', 100))),
+                format_func=lambda x: f"{x}%"
+            )
+        
+        st.divider()
+        
+        # 비과세 항목
+        st.write("**🎁 비과세 항목 (월 기준)**")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            tax_free_meal = st.number_input(
+                "식대 (최대 20만원)",
+                min_value=0,
+                max_value=200000,
+                value=int(worker.get('TaxFreeMeal', 0)),
+                step=10000
+            )
+        with col2:
+            tax_free_car = st.number_input(
+                "차량유지비 (최대 20만원)",
+                min_value=0,
+                max_value=200000,
+                value=int(worker.get('TaxFreeCarMaintenance', 0)),
+                step=10000
+            )
+        with col3:
+            other_tax_free = st.number_input(
+                "기타 비과세",
+                min_value=0,
+                value=int(worker.get('OtherTaxFree', 0)),
+                step=10000
+            )
+        
+        st.divider()
+        
+        # 이메일 설정
+        st.write("**📧 이메일 설정**")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            use_email = st.checkbox(
+                "이메일 사용", 
+                value=bool(worker.get('UseEmail', False))
+            )
+        
+        with col2:
+            email_to = st.text_input(
+                "이메일 주소",
+                value=worker.get('EmailTo', ''),
+                disabled=not use_email
+            )
+        
+        email_cc = st.text_input(
+            "참조 (CC)",
+            value=worker.get('EmailCc', ''),
+            disabled=not use_email
+        )
+        
+        st.divider()
+        
+        # 저장 버튼
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            submitted = st.form_submit_button("💾 저장", use_container_width=True, type="primary")
+        with col2:
+            cancel = st.form_submit_button("❌ 취소", use_container_width=True)
+        
+        if cancel:
+            st.session_state.selected_employee_id = None
+            st.rerun()
+        
+        if submitted:
+            # 유효성 검사
+            if not name or not birth_date:
+                st.error("❌ 이름과 생년월일은 필수입니다.")
+            elif len(birth_date) != 6:
+                st.error("❌ 생년월일은 6자리(YYMMDD)로 입력하세요.")
+            else:
+                # 직원 정보 업데이트
+                if update_employee(
+                    worker['Id'],
+                    selected_client['ID'],
+                    name,
+                    birth_date,
+                    employment_type,
+                    salary_type,
+                    monthly_salary,
+                    hourly_rate,
+                    food_allowance,
+                    car_allowance,
+                    has_pension,
+                    has_health,
+                    has_employment,
+                    tax_dependents,
+                    children_count,
+                    income_tax_rate,
+                    tax_free_meal,
+                    tax_free_car,
+                    other_tax_free,
+                    use_email,
+                    email_to,
+                    email_cc
+                ):
+                    st.success(f"✅ {name}님의 정보가 수정되었습니다.")
                     st.rerun()
-                
-                if st.button("🗑️ 삭제", key=f"delete_{worker['Id']}", use_container_width=True):
-                    if delete_employee(worker['Id']):
-                        st.success(f"✅ {worker['Name']}님이 삭제되었습니다.")
-                        st.rerun()
-                    else:
-                        st.error("❌ 삭제 실패")
+                else:
+                    st.error("❌ 수정 실패")
 
 
 def show_employee_form(selected_client, employee_id=None):
