@@ -46,7 +46,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             TabBar(
               controller: _tabController,
               tabs: const [
-                Tab(text: '서버 설정'),
                 Tab(text: 'SMTP 설정'),
                 Tab(text: '파일 저장 경로'),
               ],
@@ -55,7 +54,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _ServerSettingsTab(),
                   _SmtpSettingsTab(),
                   _FilePathSettingsTab(),
                 ],
@@ -68,188 +66,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 }
 
-// ========== 서버 설정 탭 ==========
-
-class _ServerSettingsTab extends StatefulWidget {
-  @override
-  State<_ServerSettingsTab> createState() => _ServerSettingsTabState();
-}
-
-class _ServerSettingsTabState extends State<_ServerSettingsTab> {
-  final _formKey = GlobalKey<FormState>();
-  late TextEditingController _serverUrlController;
-  late TextEditingController _apiKeyController;
-  bool _isTestingConnection = false;
-  String? _connectionStatus;
-
-  @override
-  @override
-  void initState() {
-    super.initState();
-    _serverUrlController = TextEditingController();
-    _apiKeyController = TextEditingController();
-  }
-  
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final provider = context.read<AppProvider>();
-    if (_serverUrlController.text.isEmpty) {
-      _serverUrlController.text = provider.appSettings?.serverUrl ?? '';
-      _apiKeyController.text = provider.appSettings?.apiKey ?? '';
-    }
-  }
-
-  @override
-  void dispose() {
-    _serverUrlController.dispose();
-    _apiKeyController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('API 서버 설정', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _serverUrlController,
-              decoration: const InputDecoration(
-                labelText: 'API 서버 주소',
-                border: OutlineInputBorder(),
-                hintText: 'http://25.2.89.129:8000',
-              ),
-              validator: (v) {
-                if (v?.isEmpty ?? true) return '서버 주소를 입력하세요';
-                if (!v!.startsWith('http://') && !v.startsWith('https://')) {
-                  return 'http:// 또는 https://로 시작해야 합니다';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _apiKeyController,
-              decoration: const InputDecoration(
-                labelText: 'API Key (선택)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _isTestingConnection ? null : _testConnection,
-              icon: _isTestingConnection
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.check_circle),
-              label: const Text('연결 테스트'),
-            ),
-            if (_connectionStatus != null) ...[
-              const SizedBox(height: 16),
-              Card(
-                color: _connectionStatus!.contains('성공') ? Colors.green.shade50 : Colors.red.shade50,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _connectionStatus!.contains('성공') ? Icons.check_circle : Icons.error,
-                        color: _connectionStatus!.contains('성공') ? Colors.green : Colors.red,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(_connectionStatus!)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('닫기'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _save,
-                  child: const Text('저장'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _testConnection() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isTestingConnection = true;
-      _connectionStatus = null;
-    });
-
-    try {
-      final provider = context.read<AppProvider>();
-      
-      // 임시로 설정 변경
-      provider.updateSettings(_serverUrlController.text, _apiKeyController.text);
-      
-      final isConnected = await provider.testServerConnection();
-
-      setState(() {
-        _connectionStatus = isConnected ? '✅ 서버 연결 성공' : '❌ 서버 연결 실패';
-      });
-    } catch (e) {
-      setState(() {
-        _connectionStatus = '❌ 연결 실패: $e';
-      });
-    } finally {
-      setState(() {
-        _isTestingConnection = false;
-      });
-    }
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    try {
-      await context.read<AppProvider>().saveAppSettings(
-            _serverUrlController.text,
-            _apiKeyController.text,
-          );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('설정이 저장되었습니다')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장 실패: $e')),
-        );
-      }
-    }
-  }
-}
-
-// ========== SMTP 설정 탭 ==========
 
 class _SmtpSettingsTab extends StatefulWidget {
   @override

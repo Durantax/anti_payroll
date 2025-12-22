@@ -4,19 +4,9 @@ import '../core/models.dart';
 import '../core/constants.dart';
 
 class ApiService {
-  String _serverUrl;
-  String _apiKey;
-
-  ApiService({
-    String? serverUrl,
-    String? apiKey,
-  })  : _serverUrl = serverUrl ?? AppConstants.defaultServerUrl,
-        _apiKey = apiKey ?? AppConstants.defaultApiKey;
-
-  void updateSettings(String serverUrl, String apiKey) {
-    _serverUrl = serverUrl;
-    _apiKey = apiKey;
-  }
+  // 하드코딩된 서버 URL (변경 불가)
+  static const String _serverUrl = 'http://25.2.89.129:8000';
+  static const String _apiKey = '';
 
   Map<String, String> get _headers => {
         'Content-Type': 'application/json; charset=utf-8',
