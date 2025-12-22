@@ -83,11 +83,21 @@ class _ServerSettingsTabState extends State<_ServerSettingsTab> {
   String? _connectionStatus;
 
   @override
+  @override
   void initState() {
     super.initState();
+    _serverUrlController = TextEditingController();
+    _apiKeyController = TextEditingController();
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     final provider = context.read<AppProvider>();
-    _serverUrlController = TextEditingController(text: provider.appSettings?.serverUrl ?? '');
-    _apiKeyController = TextEditingController(text: provider.appSettings?.apiKey ?? '');
+    if (_serverUrlController.text.isEmpty) {
+      _serverUrlController.text = provider.appSettings?.serverUrl ?? '';
+      _apiKeyController.text = provider.appSettings?.apiKey ?? '';
+    }
   }
 
   @override
