@@ -43,7 +43,9 @@ class PayrollCalculator {
     // - 입력된 시급을 통상시급으로 사용
     int hourlyRate = worker.hourlyRate;
     String hourlyRateSource = '입력된 시급';
-    bool isMonthlyWorker = worker.salaryType == 'MONTHLY' && worker.monthlySalary > 0;
+    // 월급제 판정: salaryType이 'MONTHLY'이거나, 시급이 0이고 월급이 있으면 월급제
+    bool isMonthlyWorker = (worker.salaryType == 'MONTHLY' && worker.monthlySalary > 0)
+                        || (worker.hourlyRate == 0 && worker.monthlySalary > 0);
     
     if (isMonthlyWorker) {
       // 월급제: 통상시급 자동 계산
@@ -64,7 +66,7 @@ class PayrollCalculator {
     int baseSalary;
     String baseSalaryFormula;
     
-    if (worker.salaryType == 'MONTHLY' && worker.monthlySalary > 0) {
+    if (isMonthlyWorker) {
       baseSalary = worker.monthlySalary;
       // 월급제는 통상시급 계산식 포함
       final weeklyHours = monthly.weeklyHours > 0 ? monthly.weeklyHours : 40.0;
