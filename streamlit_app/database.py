@@ -61,11 +61,11 @@ else:
     )
 
 
-@st.cache_resource
 def get_db_connection():
-    """DB 연결 (캐시됨)"""
+    """DB 연결 (매번 새로운 연결 생성)"""
     try:
-        return pyodbc.connect(CONN_STR)
+        conn = pyodbc.connect(CONN_STR)
+        return conn
     except Exception as e:
         st.error(f"❌ DB 연결 실패: {e}")
         return None
@@ -77,11 +77,14 @@ def execute_query(sql: str, params: tuple = ()) -> int:
     if not conn:
         raise Exception("DB 연결 없음")
     
-    cursor = conn.cursor()
-    cursor.execute(sql, params)
-    rowcount = cursor.rowcount
-    conn.commit()
-    return rowcount
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, params)
+        rowcount = cursor.rowcount
+        conn.commit()
+        return rowcount
+    finally:
+        conn.close()
 
 
 def fetch_all(sql: str, params: tuple = ()) -> List[Dict[str, Any]]:
@@ -90,16 +93,19 @@ def fetch_all(sql: str, params: tuple = ()) -> List[Dict[str, Any]]:
     if not conn:
         return []
     
-    cursor = conn.cursor()
-    cursor.execute(sql, params)
-    
-    columns = [column[0] for column in cursor.description]
-    results = []
-    
-    for row in cursor.fetchall():
-        results.append(dict(zip(columns, row)))
-    
-    return results
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, params)
+        
+        columns = [column[0] for column in cursor.description]
+        results = []
+        
+        for row in cursor.fetchall():
+            results.append(dict(zip(columns, row)))
+        
+        return results
+    finally:
+        conn.close()
 
 
 def fetch_one(sql: str, params: tuple = ()) -> Optional[Dict[str, Any]]:

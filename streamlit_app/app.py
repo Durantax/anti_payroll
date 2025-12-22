@@ -23,7 +23,6 @@ from database import get_db_connection, fetch_all, fetch_one, execute_query
 from payroll_calculator import PayrollCalculator
 from pdf_generator import generate_payslip_pdf, generate_batch_pdfs
 from email_service import EmailService
-from db_init import initialize_database, check_tables_exist
 
 # CSS 스타일
 st.markdown("""
@@ -257,26 +256,6 @@ def main():
         st.error("❌ 데이터베이스에 연결할 수 없습니다. 서버 설정을 확인하세요.")
         st.info("💡 설정 탭에서 '데이터베이스 연결 진단' 기능을 사용하세요.")
         return
-    
-    # DB 스키마 초기화 (필요한 테이블이 없으면 생성)
-    if 'db_initialized' not in st.session_state:
-        with st.spinner("데이터베이스 테이블 확인 중..."):
-            all_exist, existing_tables = check_tables_exist()
-            
-            if not all_exist:
-                st.info("📊 급여관리에 필요한 테이블을 생성하는 중...")
-                success, message = initialize_database()
-                
-                if success:
-                    st.success("✅ 데이터베이스 초기화 완료!")
-                    with st.expander("초기화 상세 로그"):
-                        st.text(message)
-                else:
-                    st.error(f"❌ 데이터베이스 초기화 실패: {message}")
-                    st.warning("⚠️ 데이터베이스 관리자 권한이 필요할 수 있습니다.")
-                    return
-            
-            st.session_state.db_initialized = True
     
     # 사이드바: 거래처 선택 및 날짜 설정
     with st.sidebar:
