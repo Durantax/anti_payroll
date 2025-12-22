@@ -142,17 +142,17 @@ def load_clients():
 
 
 def load_workers(client_id, year, month):
-    """직원 목록 로드"""
+    """직원 목록 로드 (Flutter 서버 스키마에 맞춤)"""
     ym = f"{year:04d}-{month:02d}"
     sql = """
         SELECT 
-            e.Id,
+            e.EmployeeId as Id,
             e.ClientId,
             e.Name,
             e.BirthDate,
             e.EmploymentType,
             e.SalaryType,
-            e.MonthlySalary,
+            e.BaseSalary as MonthlySalary,
             e.HourlyRate,
             e.NormalHours,
             e.FoodAllowance,
@@ -160,51 +160,58 @@ def load_workers(client_id, year, month):
             e.HasNationalPension,
             e.HasHealthInsurance,
             e.HasEmploymentInsurance,
-            e.TaxDependents,
-            e.ChildrenCount,
-            e.IncomeTaxRate,
-            e.TaxFreeMeal,
-            e.TaxFreeCarMaintenance,
-            e.OtherTaxFree,
-            e.UseEmail,
             e.EmailTo,
             e.EmailCc,
-            e.Phone,
-            m.NormalHours as NormalWorkHours,
+            e.UseEmail,
+            m.WorkHours as NormalWorkHours,
             m.OvertimeHours,
             m.NightHours,
             m.HolidayHours,
             m.WeeklyHours,
             m.WeekCount,
-            m.Bonus,
-            m.AdditionalPay1,
-            m.AdditionalPay2,
-            m.AdditionalPay3,
-            m.AdditionalDeduct1,
-            m.AdditionalDeduct2,
-            m.AdditionalDeduct3,
-            m.HireDate,
-            m.TerminationDate
+            m.Bonus
         FROM dbo.Employees e
         LEFT JOIN dbo.PayrollMonthlyInput m 
-            ON e.Id = m.EmployeeId AND m.Ym = ?
+            ON e.EmployeeId = m.EmployeeId AND m.Ym = ?
         WHERE e.ClientId = ?
         ORDER BY e.Name
     """
     workers = fetch_all(sql, (ym, client_id))
     
-    # None 값을 0으로 변환
+    # None 값을 0으로 변환 및 기본값 설정
     for worker in workers:
-        for key in ['NormalHours', 'OvertimeHours', 'NightHours', 'HolidayHours',
-                    'WeeklyHours', 'WeekCount', 'Bonus', 
-                    'AdditionalPay1', 'AdditionalPay2', 'AdditionalPay3',
-                    'AdditionalDeduct1', 'AdditionalDeduct2', 'AdditionalDeduct3']:
+        # 급여 계산에 필요한 필드
+        for key in ['NormalHours', 'NormalWorkHours', 'OvertimeHours', 'NightHours', 
+                    'HolidayHours', 'WeeklyHours', 'WeekCount', 'Bonus',
+                    'MonthlySalary', 'HourlyRate', 'FoodAllowance', 'CarAllowance']:
             if worker.get(key) is None:
                 worker[key] = 0
         
         # WeeklyHours 기본값
         if worker.get('WeeklyHours') == 0:
             worker['WeeklyHours'] = 40.0
+        
+        # 4대보험 기본값 (없으면 True)
+        for key in ['HasNationalPension', 'HasHealthInsurance', 'HasEmploymentInsurance']:
+            if worker.get(key) is None:
+                worker[key] = True
+        
+        # 이메일 기본값
+        if worker.get('UseEmail') is None:
+            worker['UseEmail'] = False
+        if worker.get('EmailTo') is None:
+            worker['EmailTo'] = ''
+        if worker.get('EmailCc') is None:
+            worker['EmailCc'] = ''
+        
+        # Streamlit 앱에서 사용하는 추가 필드 (DB에 없어도 기본값 제공)
+        worker.setdefault('TaxDependents', 1)
+        worker.setdefault('ChildrenCount', 0)
+        worker.setdefault('IncomeTaxRate', 100)
+        worker.setdefault('TaxFreeMeal', 0)
+        worker.setdefault('TaxFreeCarMaintenance', 0)
+        worker.setdefault('OtherTaxFree', 0)
+        worker.setdefault('Phone', '')
     
     return workers
 
@@ -662,32 +669,18 @@ def show_monthly_data_input(workers, selected_client):
 
 
 def save_monthly_data_from_session(employee_id, ym):
-    """세션 상태에서 월별 데이터 저장"""
+    """세션 상태에서 월별 데이터 저장 (Flutter 서버 스키마)"""
     try:
         key_prefix = f"monthly_{employee_id}_"
         
-        # 세션에서 값 가져오기
-        normal_hours = st.session_state.get(key_prefix + "normal_hours", 0)
+        # 세션에서 값 가져오기 (Flutter 스키마에 맞는 필드만)
+        work_hours = st.session_state.get(key_prefix + "normal_hours", 0)  # WorkHours로 저장
         overtime_hours = st.session_state.get(key_prefix + "overtime_hours", 0)
         night_hours = st.session_state.get(key_prefix + "night_hours", 0)
         holiday_hours = st.session_state.get(key_prefix + "holiday_hours", 0)
         weekly_hours = st.session_state.get(key_prefix + "weekly_hours", 40.0)
         week_count = st.session_state.get(key_prefix + "week_count", 4)
         bonus = st.session_state.get(key_prefix + "bonus", 0)
-        additional_pay1 = st.session_state.get(key_prefix + "additional_pay1", 0)
-        additional_pay2 = st.session_state.get(key_prefix + "additional_pay2", 0)
-        additional_pay3 = st.session_state.get(key_prefix + "additional_pay3", 0)
-        additional_deduct1 = st.session_state.get(key_prefix + "additional_deduct1", 0)
-        additional_deduct2 = st.session_state.get(key_prefix + "additional_deduct2", 0)
-        additional_deduct3 = st.session_state.get(key_prefix + "additional_deduct3", 0)
-        
-        # 입퇴사일 가져오기
-        hire_date = st.session_state.get(key_prefix + "hire_date")
-        termination_date = st.session_state.get(key_prefix + "termination_date")
-        
-        # 입사일이 없으면 기본값 사용
-        if not hire_date:
-            hire_date = '1900-01-01'
         
         # UPSERT (있으면 업데이트, 없으면 삽입)
         sql_check = "SELECT Id FROM dbo.PayrollMonthlyInput WHERE EmployeeId = ? AND Ym = ?"
@@ -697,38 +690,26 @@ def save_monthly_data_from_session(employee_id, ym):
             # 업데이트
             sql = """
                 UPDATE dbo.PayrollMonthlyInput SET
-                    NormalHours = ?, OvertimeHours = ?, NightHours = ?, HolidayHours = ?,
-                    WeeklyHours = ?, WeekCount = ?, Bonus = ?,
-                    AdditionalPay1 = ?, AdditionalPay2 = ?, AdditionalPay3 = ?,
-                    AdditionalDeduct1 = ?, AdditionalDeduct2 = ?, AdditionalDeduct3 = ?,
-                    HireDate = ?, TerminationDate = ?
+                    WorkHours = ?, OvertimeHours = ?, NightHours = ?, HolidayHours = ?,
+                    WeeklyHours = ?, WeekCount = ?, Bonus = ?
                 WHERE EmployeeId = ? AND Ym = ?
             """
             execute_query(sql, (
-                normal_hours, overtime_hours, night_hours, holiday_hours,
+                work_hours, overtime_hours, night_hours, holiday_hours,
                 weekly_hours, week_count, bonus,
-                additional_pay1, additional_pay2, additional_pay3,
-                additional_deduct1, additional_deduct2, additional_deduct3,
-                hire_date, termination_date,
                 employee_id, ym
             ))
         else:
             # 삽입
             sql = """
                 INSERT INTO dbo.PayrollMonthlyInput (
-                    EmployeeId, Ym, NormalHours, OvertimeHours, NightHours, HolidayHours,
-                    WeeklyHours, WeekCount, Bonus,
-                    AdditionalPay1, AdditionalPay2, AdditionalPay3,
-                    AdditionalDeduct1, AdditionalDeduct2, AdditionalDeduct3,
-                    HireDate, TerminationDate
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    EmployeeId, Ym, WorkHours, OvertimeHours, NightHours, HolidayHours,
+                    WeeklyHours, WeekCount, Bonus
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             execute_query(sql, (
-                employee_id, ym, normal_hours, overtime_hours, night_hours, holiday_hours,
-                weekly_hours, week_count, bonus,
-                additional_pay1, additional_pay2, additional_pay3,
-                additional_deduct1, additional_deduct2, additional_deduct3,
-                hire_date, termination_date
+                employee_id, ym, work_hours, overtime_hours, night_hours, holiday_hours,
+                weekly_hours, week_count, bonus
             ))
         
         return True
@@ -1038,24 +1019,22 @@ def add_employee(client_id, name, birth_date, employment_type, salary_type,
                 tax_dependents, children_count, income_tax_rate,
                 tax_free_meal, tax_free_car, other_tax_free,
                 use_email, email_to, email_cc):
-    """직원 추가"""
+    """직원 추가 (Flutter 서버 스키마)"""
     try:
         sql = """
             INSERT INTO dbo.Employees (
                 ClientId, Name, BirthDate, EmploymentType, SalaryType,
-                MonthlySalary, HourlyRate,
+                BaseSalary, HourlyRate, NormalHours,
+                FoodAllowance, CarAllowance,
                 HasNationalPension, HasHealthInsurance, HasEmploymentInsurance,
-                TaxDependents, ChildrenCount, IncomeTaxRate,
-                TaxFreeMeal, TaxFreeCarMaintenance, OtherTaxFree,
                 UseEmail, EmailTo, EmailCc
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 209, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         execute_query(sql, (
             client_id, name, birth_date, employment_type, salary_type,
             monthly_salary, hourly_rate,
+            0, 0,  # FoodAllowance, CarAllowance
             has_pension, has_health, has_employment,
-            tax_dependents, children_count, income_tax_rate,
-            tax_free_meal, tax_free_car, other_tax_free,
             use_email, email_to, email_cc
         ))
         return True
@@ -1069,24 +1048,20 @@ def update_employee(employee_id, client_id, name, birth_date, employment_type, s
                    tax_dependents, children_count, income_tax_rate,
                    tax_free_meal, tax_free_car, other_tax_free,
                    use_email, email_to, email_cc):
-    """직원 수정"""
+    """직원 수정 (Flutter 서버 스키마)"""
     try:
         sql = """
             UPDATE dbo.Employees SET
                 ClientId = ?, Name = ?, BirthDate = ?, EmploymentType = ?, SalaryType = ?,
-                MonthlySalary = ?, HourlyRate = ?,
+                BaseSalary = ?, HourlyRate = ?,
                 HasNationalPension = ?, HasHealthInsurance = ?, HasEmploymentInsurance = ?,
-                TaxDependents = ?, ChildrenCount = ?, IncomeTaxRate = ?,
-                TaxFreeMeal = ?, TaxFreeCarMaintenance = ?, OtherTaxFree = ?,
                 UseEmail = ?, EmailTo = ?, EmailCc = ?
-            WHERE Id = ?
+            WHERE EmployeeId = ?
         """
         execute_query(sql, (
             client_id, name, birth_date, employment_type, salary_type,
             monthly_salary, hourly_rate,
             has_pension, has_health, has_employment,
-            tax_dependents, children_count, income_tax_rate,
-            tax_free_meal, tax_free_car, other_tax_free,
             use_email, email_to, email_cc,
             employee_id
         ))
@@ -1097,9 +1072,9 @@ def update_employee(employee_id, client_id, name, birth_date, employment_type, s
 
 
 def delete_employee(employee_id):
-    """직원 삭제"""
+    """직원 삭제 (Flutter 서버 스키마)"""
     try:
-        sql = "DELETE FROM dbo.Employees WHERE Id = ?"
+        sql = "DELETE FROM dbo.Employees WHERE EmployeeId = ?"
         execute_query(sql, (employee_id,))
         return True
     except Exception as e:
