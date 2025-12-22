@@ -99,38 +99,16 @@ class AppProvider with ChangeNotifier {
 
   // ========== 설정 ==========
 
-  // ✅ 추가된 메서드
-  void updateSettings(String serverUrl, String apiKey) {
-    _apiService.updateSettings(serverUrl, apiKey);
-  }
-
   Future<void> loadAppSettings() async {
     try {
       _appSettings = await _apiService.getAppSettings();
-      if (_appSettings != null) {
-        _apiService.updateSettings(_appSettings!.serverUrl, _appSettings!.apiKey);
-      }
       notifyListeners();
     } catch (e) {
       print('앱 설정 로드 실패: $e');
     }
   }
 
-  Future<void> saveAppSettings(String serverUrl, String apiKey) async {
-    try {
-      _setLoading(true);
-      final settings = AppSettings(serverUrl: serverUrl, apiKey: apiKey);
-      await _apiService.saveAppSettings(settings);
-      _appSettings = settings;
-      _apiService.updateSettings(serverUrl, apiKey);
-      _setError(null);
-      notifyListeners();
-    } catch (e) {
-      _setError('설정 저장 실패: $e');
-    } finally {
-      _setLoading(false);
-    }
-  }
+  // saveAppSettings 제거됨 - 서버 URL이 하드코딩되어 더 이상 필요 없음
 
   Future<void> loadSmtpConfig() async {
     try {
@@ -160,15 +138,14 @@ class AppProvider with ChangeNotifier {
     try {
       _setLoading(true);
       
-      // 기존 설정에 경로 정보 추가
+      // 로컬에만 저장 (서버에 저장하지 않음)
       final updatedSettings = AppSettings(
-        serverUrl: _appSettings?.serverUrl ?? '',
-        apiKey: _appSettings?.apiKey ?? '',
+        serverUrl: 'http://25.2.89.129:8000',  // 하드코딩
+        apiKey: '',
         downloadBasePath: basePath,
         useClientSubfolders: useClientSubfolders,
       );
       
-      await _apiService.saveAppSettings(updatedSettings);
       _appSettings = updatedSettings;
       _setError(null);
       notifyListeners();
