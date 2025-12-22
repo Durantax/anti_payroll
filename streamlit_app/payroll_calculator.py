@@ -191,8 +191,15 @@ class PayrollCalculator:
         if not self.client_has_5_or_more or self.holiday_hours == 0:
             return 0
         
-        # 휴일수당 = 통상시급 × 1.5 × 휴일시간
-        return round(hourly_rate * 1.5 * self.holiday_hours)
+        # 휴일수당: 8시간 이하는 1.5배, 8시간 초과는 8시간까지 1.5배 + 초과분 2.0배
+        if self.holiday_hours <= 8:
+            # 8시간 이하: 1.5배
+            return round(hourly_rate * 1.5 * self.holiday_hours)
+        else:
+            # 8시간 초과: 8시간까지 1.5배 + 초과분 2.0배
+            base_pay = round(hourly_rate * 1.5 * 8)
+            overtime_pay = round(hourly_rate * 2.0 * (self.holiday_hours - 8))
+            return base_pay + overtime_pay
     
     def _calculate_weekly_holiday_pay(self, hourly_rate: float) -> int:
         """주휴수당 계산"""
