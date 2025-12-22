@@ -27,11 +27,11 @@ class PayrollCalculator:
         self.monthly_data = monthly_data
         self.client_has_5_or_more = client_has_5_or_more
         
-        # 직원 기본 정보
+        # 직원 기본 정보 (Decimal → float 변환)
         self.salary_type = worker.get('SalaryType', 'MONTHLY')
         self.employment_type = worker.get('EmploymentType', 'REGULAR')
-        self.monthly_salary = worker.get('MonthlySalary', 0)
-        self.hourly_rate_input = worker.get('HourlyRate', 0)
+        self.monthly_salary = float(worker.get('MonthlySalary', 0))
+        self.hourly_rate_input = float(worker.get('HourlyRate', 0))
         
         # 4대보험 가입 여부
         self.has_national_pension = worker.get('HasNationalPension', True)
@@ -39,33 +39,35 @@ class PayrollCalculator:
         self.has_employment_insurance = worker.get('HasEmploymentInsurance', True)
         
         # 세금 관련
-        self.tax_dependents = worker.get('TaxDependents', 1)
-        self.children_count = worker.get('ChildrenCount', 0)
+        self.tax_dependents = int(worker.get('TaxDependents', 1))
+        self.children_count = int(worker.get('ChildrenCount', 0))
         self.income_tax_rate = worker.get('IncomeTaxRate', None)
+        if self.income_tax_rate is not None:
+            self.income_tax_rate = int(self.income_tax_rate)
         
-        # 비과세 항목
-        self.food_allowance = worker.get('FoodAllowance', 0)
-        self.car_allowance = worker.get('CarAllowance', 0)
-        self.tax_free_meal = worker.get('TaxFreeMeal', 0)
-        self.tax_free_car_maintenance = worker.get('TaxFreeCarMaintenance', 0)
-        self.other_tax_free = worker.get('OtherTaxFree', 0)
+        # 비과세 항목 (Decimal → float 변환)
+        self.food_allowance = float(worker.get('FoodAllowance', 0))
+        self.car_allowance = float(worker.get('CarAllowance', 0))
+        self.tax_free_meal = float(worker.get('TaxFreeMeal', 0))
+        self.tax_free_car_maintenance = float(worker.get('TaxFreeCarMaintenance', 0))
+        self.other_tax_free = float(worker.get('OtherTaxFree', 0))
         
-        # 월별 근무 데이터
-        self.normal_hours = monthly_data.get('NormalHours', 0)
-        self.overtime_hours = monthly_data.get('OvertimeHours', 0)
-        self.night_hours = monthly_data.get('NightHours', 0)
-        self.holiday_hours = monthly_data.get('HolidayHours', 0)
-        self.weekly_hours = monthly_data.get('WeeklyHours', 40.0)
-        self.week_count = monthly_data.get('WeekCount', 4)
-        self.bonus = monthly_data.get('Bonus', 0)
+        # 월별 근무 데이터 (Decimal → float 변환)
+        self.normal_hours = float(monthly_data.get('NormalHours', 0))
+        self.overtime_hours = float(monthly_data.get('OvertimeHours', 0))
+        self.night_hours = float(monthly_data.get('NightHours', 0))
+        self.holiday_hours = float(monthly_data.get('HolidayHours', 0))
+        self.weekly_hours = float(monthly_data.get('WeeklyHours', 40.0))
+        self.week_count = int(monthly_data.get('WeekCount', 4))
+        self.bonus = float(monthly_data.get('Bonus', 0))
         
-        # 추가 지급/공제
-        self.additional_pay1 = monthly_data.get('AdditionalPay1', 0)
-        self.additional_pay2 = monthly_data.get('AdditionalPay2', 0)
-        self.additional_pay3 = monthly_data.get('AdditionalPay3', 0)
-        self.additional_deduct1 = monthly_data.get('AdditionalDeduct1', 0)
-        self.additional_deduct2 = monthly_data.get('AdditionalDeduct2', 0)
-        self.additional_deduct3 = monthly_data.get('AdditionalDeduct3', 0)
+        # 추가 지급/공제 (Decimal → float 변환)
+        self.additional_pay1 = float(monthly_data.get('AdditionalPay1', 0) or 0)
+        self.additional_pay2 = float(monthly_data.get('AdditionalPay2', 0) or 0)
+        self.additional_pay3 = float(monthly_data.get('AdditionalPay3', 0) or 0)
+        self.additional_deduct1 = float(monthly_data.get('AdditionalDeduct1', 0) or 0)
+        self.additional_deduct2 = float(monthly_data.get('AdditionalDeduct2', 0) or 0)
+        self.additional_deduct3 = float(monthly_data.get('AdditionalDeduct3', 0) or 0)
         
     def calculate(self) -> Dict[str, Any]:
         """급여 계산 실행"""
