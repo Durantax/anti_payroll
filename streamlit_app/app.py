@@ -332,6 +332,14 @@ def load_workers(client_id, year, month):
             if worker.get(key) is None:
                 worker[key] = 0
         
+        # EmploymentType 기본값 (빈 문자열이면 REGULAR로 설정)
+        if not worker.get('EmploymentType') or worker.get('EmploymentType').strip() == '':
+            worker['EmploymentType'] = 'REGULAR'
+        
+        # SalaryType 기본값
+        if not worker.get('SalaryType') or worker.get('SalaryType').strip() == '':
+            worker['SalaryType'] = 'MONTHLY'
+        
         # WeeklyHours 기본값
         if worker.get('WeeklyHours') == 0:
             worker['WeeklyHours'] = 40.0
@@ -1202,7 +1210,7 @@ def show_employee_edit_form(selected_client, worker):
                 # 직원 정보 업데이트
                 if update_employee(
                     worker['Id'],
-                    selected_client['ID'],
+                    selected_client['Id'],
                     name,
                     birth_date,
                     employment_type,
