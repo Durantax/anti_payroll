@@ -699,11 +699,17 @@ class AppProvider with ChangeNotifier {
     try {
       _setLoading(true);
       final results = _salaryResults.values.toList();
+      
+      final basePath = settings?.downloadBasePath ?? PathHelper.getDefaultDownloadPath();
+      final useSubfolders = settings?.useClientSubfolders ?? true;
+      
       await FileEmailService.exportPayrollCsv(
         clientName: _selectedClient!.name,
         year: selectedYear,
         month: selectedMonth,
         results: results,
+        basePath: basePath,
+        useClientSubfolders: useSubfolders,
       );
       _setError(null);
     } catch (e) {
@@ -754,7 +760,7 @@ class AppProvider with ChangeNotifier {
         result: result,
         year: selectedYear,
         month: selectedMonth,
-        customBasePath: basePath.isNotEmpty ? basePath : null,
+        basePath: basePath.isNotEmpty ? basePath : PathHelper.getDefaultDownloadPath(),
         useClientSubfolders: useSubfolders,
       );
       _setError(null);
@@ -800,7 +806,7 @@ class AppProvider with ChangeNotifier {
             result: result,
             year: selectedYear,
             month: selectedMonth,
-            customBasePath: basePath.isNotEmpty ? basePath : null,
+            basePath: basePath.isNotEmpty ? basePath : PathHelper.getDefaultDownloadPath(),
             useClientSubfolders: useSubfolders,
           );
           successCount++;
@@ -821,6 +827,7 @@ class AppProvider with ChangeNotifier {
           basePath: basePath,
           clientName: _selectedClient!.name,
           year: selectedYear,
+          month: selectedMonth,
         );
         await Process.run('explorer', [folderPath]);
       }
@@ -855,7 +862,7 @@ class AppProvider with ChangeNotifier {
         result: result,
         year: selectedYear,
         month: selectedMonth,
-        customBasePath: basePath.isNotEmpty ? basePath : null,
+        basePath: basePath.isNotEmpty ? basePath : PathHelper.getDefaultDownloadPath(),
         useClientSubfolders: useSubfolders,
       );
 
