@@ -109,9 +109,14 @@ class AppProvider with ChangeNotifier {
     try {
       final settings = await _apiService.getAppSettings();
       
-      // 서버에서 가져온 설정의 downloadBasePath가 비어있으면 기본 경로 설정
-      if (settings.downloadBasePath.isEmpty) {
-        _appSettings = settings.copyWith(
+      // 서버에서 가져온 설정이 null이거나 downloadBasePath가 비어있으면 기본 경로 설정
+      if (settings == null || settings.downloadBasePath.isEmpty) {
+        _appSettings = (settings ?? AppSettings(
+          serverUrl: 'http://25.2.89.129:8000',
+          apiKey: '',
+          downloadBasePath: '',
+          useClientSubfolders: true,
+        )).copyWith(
           downloadBasePath: PathHelper.getDefaultDownloadPath(),
         );
       } else {
