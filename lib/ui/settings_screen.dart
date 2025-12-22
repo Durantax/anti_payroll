@@ -263,6 +263,12 @@ class _FilePathSettingsTabState extends State<_FilePathSettingsTab> {
   String _getDefaultPath() {
     if (Platform.isWindows) {
       final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\Users\\Default';
+      // OneDrive 문서 폴더 우선, 없으면 일반 Documents
+      final oneDrivePath = '$userProfile\\OneDrive\\문서\\급여관리프로그램';
+      final oneDriveDir = Directory(oneDrivePath);
+      if (oneDriveDir.parent.existsSync()) {
+        return oneDrivePath;
+      }
       return '$userProfile\\Documents\\급여관리프로그램';
     }
     return '';
@@ -323,7 +329,10 @@ class _FilePathSettingsTabState extends State<_FilePathSettingsTab> {
                 title: const Text('거래처별 하위 폴더 생성'),
                 subtitle: const Text('예: 급여관리프로그램\\삼성전자\\2025\\'),
                 value: _useClientSubfolders,
-                onChanged: (value) => setState(() => _useClientSubfolders = value ?? true),
+                onChanged: (value) {
+                  setState(() => _useClientSubfolders = value ?? true);
+                  _autoSave(); // 자동 저장
+                },
               ),
             ),
             
@@ -433,11 +442,6 @@ class _FilePathSettingsTabState extends State<_FilePathSettingsTab> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('닫기'),
-                ),
-                const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: _resetToDefault,
                   icon: const Icon(Icons.refresh),
@@ -448,8 +452,8 @@ class _FilePathSettingsTabState extends State<_FilePathSettingsTab> {
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed: _save,
-                  child: const Text('저장'),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('닫기'),
                 ),
               ],
             ),
@@ -469,6 +473,7 @@ class _FilePathSettingsTabState extends State<_FilePathSettingsTab> {
       setState(() {
         _pathController.text = selectedDirectory;
       });
+      _autoSave(); // 자동 저장
     }
   }
 
@@ -477,61 +482,29 @@ class _FilePathSettingsTabState extends State<_FilePathSettingsTab> {
       _pathController.text = _getDefaultPath();
       _useClientSubfolders = true;
     });
+    _autoSave(); // 자동 저장
   }
 
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    try {
-      // 경로 존재 확인
-      final directory = Directory(_pathController.text);
-      if (!directory.existsSync()) {
-        final create = await showDialog<bool>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('폴더 생성'),
-            content: Text('${_pathController.text}\n\n폴더가 존재하지 않습니다. 생성하시겠습니까?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('취소'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('생성'),
-              ),
-            ],
-          ),
-        );
-
-        if (create == true) {
-          directory.createSync(recursive: true);
-        } else {
-          return;
-        }
-      }
-
-      await context.read<AppProvider>().updateDownloadPath(
-            _pathController.text,
-            _useClientSubfolders,
-          );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('파일 저장 경로가 설정되었습니다'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장 실패: $e')),
-        );
+  void _autoSave() {
+    // 경로가 비어있으면 저장하지 않음
+    if (_pathController.text.isEmpty) return;
+    
+    // 폴더가 없으면 자동 생성
+    final directory = Directory(_pathController.text);
+    if (!directory.existsSync()) {
+      try {
+        directory.createSync(recursive: true);
+      } catch (e) {
+        // 생성 실패 시 무시 (다음에 다시 시도)
+        return;
       }
     }
+    
+    // 저장 (비동기이지만 기다리지 않음 - 백그라운드에서 처리)
+    context.read<AppProvider>().updateDownloadPath(
+      _pathController.text,
+      _useClientSubfolders,
+    );
   }
 }
 

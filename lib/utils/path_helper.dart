@@ -5,17 +5,30 @@ import 'package:path/path.dart' as path;
 class PathHelper {
   /// 기본 다운로드 경로 생성
   /// 
+  /// 우선순위:
+  /// 1. OneDrive 문서 폴더 (C:\Users\사용자\OneDrive\문서)
+  /// 2. 일반 Documents 폴더 (C:\Users\사용자\Documents)
+  /// 
   /// 예시:
-  /// - Windows: C:\Users\사용자\Documents\급여관리프로그램
+  /// - Windows: C:\Users\사용자\OneDrive\문서\급여관리프로그램
   /// - macOS: /Users/사용자/Documents/급여관리프로그램
   /// - Linux: /home/사용자/Documents/급여관리프로그램
   static String getDefaultDownloadPath() {
     String documentsPath;
     
     if (Platform.isWindows) {
-      // Windows: C:\Users\사용자\Documents
       final userProfile = Platform.environment['USERPROFILE'] ?? '';
-      documentsPath = path.join(userProfile, 'Documents');
+      
+      // OneDrive 문서 폴더 우선 체크
+      final oneDrivePath = path.join(userProfile, 'OneDrive', '문서');
+      final oneDriveDir = Directory(oneDrivePath);
+      
+      if (oneDriveDir.existsSync()) {
+        documentsPath = oneDrivePath;
+      } else {
+        // OneDrive 없으면 일반 Documents 사용
+        documentsPath = path.join(userProfile, 'Documents');
+      }
     } else if (Platform.isMacOS) {
       // macOS: /Users/사용자/Documents
       final home = Platform.environment['HOME'] ?? '';
@@ -118,7 +131,7 @@ class PathHelper {
   /// 기본 경로 예시 생성
   static String getExamplePath() {
     if (Platform.isWindows) {
-      return 'C:\\Users\\사용자\\Documents\\급여관리프로그램';
+      return 'C:\\Users\\사용자\\OneDrive\\문서\\급여관리프로그램';
     } else if (Platform.isMacOS) {
       return '/Users/사용자/Documents/급여관리프로그램';
     } else {
