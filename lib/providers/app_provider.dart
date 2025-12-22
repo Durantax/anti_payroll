@@ -179,14 +179,6 @@ class AppProvider with ChangeNotifier {
       _setLoading(false);
     }
   }
-      _setError(null);
-      notifyListeners();
-    } catch (e) {
-      _setError('SMTP 설정 저장 실패: $e');
-    } finally {
-      _setLoading(false);
-    }
-  }
 
   Future<bool> testServerConnection() async {
     try {
