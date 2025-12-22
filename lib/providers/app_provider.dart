@@ -105,12 +105,13 @@ class AppProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('앱 설정 로드 실패: $e - 기본 OneDrive 경로 사용');
-      // 서버에서 설정을 가져오지 못하면 기본 OneDrive 경로로 초기화
+      // 서버에서 설정을 가져오지 못하면 항상 OneDrive 기본 경로 사용
+      // 사용자 설정 불필요 - 자동으로 OneDrive 우선, 없으면 Documents
       _appSettings = AppSettings(
         serverUrl: 'http://25.2.89.129:8000',
         apiKey: '',
-        downloadBasePath: PathHelper.getDefaultDownloadPath(),
-        useClientSubfolders: true,
+        downloadBasePath: PathHelper.getDefaultDownloadPath(), // OneDrive 자동
+        useClientSubfolders: true, // 항상 거래처별 폴더 사용
       );
       notifyListeners();
     }
@@ -142,24 +143,7 @@ class AppProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateDownloadPath(String basePath, bool useClientSubfolders) async {
-    try {
-      // 로컬에만 저장 (서버에 저장하지 않음, 로딩 상태 불필요)
-      final updatedSettings = AppSettings(
-        serverUrl: 'http://25.2.89.129:8000',  // 하드코딩
-        apiKey: '',
-        downloadBasePath: basePath,
-        useClientSubfolders: useClientSubfolders,
-      );
-      
-      _appSettings = updatedSettings;
-      _setError(null);
-      notifyListeners();
-    } catch (e) {
-      _setError('경로 저장 실패: $e');
-      rethrow;
-    }
-  }
+  // updateDownloadPath 제거됨 - 파일 경로는 항상 OneDrive 자동 사용
 
   Future<bool> testServerConnection() async {
     try {
