@@ -767,8 +767,9 @@ class _MainScreenContentState extends State<MainScreenContent> {
 
   /// 다운로드 폴더 열기 (Windows 전용)
   void _openDownloadFolder(AppProvider provider) {
-    // 설정된 경로가 없으면 기본 경로 사용
-    final basePath = provider.settings?.downloadBasePath ?? PathHelper.getDefaultDownloadPath();
+    // 기본 경로 사용 (빈 문자열이면 OneDrive 자동)
+    final settingsPath = provider.settings?.downloadBasePath ?? '';
+    final basePath = settingsPath.isEmpty ? PathHelper.getDefaultDownloadPath() : settingsPath;
 
     String folderPath = basePath;
     
