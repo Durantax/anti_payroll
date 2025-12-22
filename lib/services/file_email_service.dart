@@ -295,6 +295,8 @@ class FileEmailService {
     required int year,
     required int month,
     required List<SalaryResult> results,
+    required String basePath,
+    bool useClientSubfolders = true,
   }) async {
     final pdf = pw.Document();
 
@@ -377,18 +379,18 @@ class FileEmailService {
 
     final pdfBytes = await pdf.save();
     
-    // 사용자가 저장 위치 선택
-    final fileName = '${clientName}_${year}년${month}월_급여대장.pdf';
-    final outputPath = await FilePicker.platform.saveFile(
-      dialogTitle: '급여대장 PDF 저장',
-      fileName: fileName,
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
+    // 자동 저장 경로 생성
+    final outputPath = PathHelper.getFilePath(
+      basePath: basePath,
+      clientName: clientName,
+      year: year,
+      month: month,
+      fileType: 'pdf_register',
+      useClientSubfolders: useClientSubfolders,
     );
-
-    if (outputPath == null) {
-      throw Exception('파일 저장이 취소되었습니다.');
-    }
+    
+    // 폴더가 없으면 생성
+    await PathHelper.ensureDirectoryExists(File(outputPath).parent.path);
 
     final file = File(outputPath);
     await file.writeAsBytes(pdfBytes);

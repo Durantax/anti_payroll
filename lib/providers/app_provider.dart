@@ -698,12 +698,18 @@ class AppProvider with ChangeNotifier {
     try {
       _setLoading(true);
       final results = _salaryResults.values.toList();
+      
+      final basePath = settings?.downloadBasePath ?? PathHelper.getDefaultDownloadPath();
+      final useSubfolders = settings?.useClientSubfolders ?? true;
+      
       await FileEmailService.exportPayrollRegisterPdf(
         clientName: _selectedClient!.name,
         bizId: _selectedClient!.bizId,
         year: selectedYear,
         month: selectedMonth,
         results: results,
+        basePath: basePath,
+        useClientSubfolders: useSubfolders,
       );
       _setError(null);
     } catch (e) {
