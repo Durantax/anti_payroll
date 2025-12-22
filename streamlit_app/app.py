@@ -1305,13 +1305,92 @@ def show_settings():
     
     st.divider()
     
-    # 데이터베이스 정보
-    st.subheader("📊 데이터베이스 정보")
-    st.code(f"""
-서버: 25.2.89.129:1433
-데이터베이스: 기본정보
-사용자: user1
-""")
+    # 데이터베이스 정보 및 진단
+    st.subheader("📊 데이터베이스 연결 진단")
+    
+    from database import get_database_info
+    
+    if st.button("🔍 데이터베이스 연결 진단"):
+        with st.spinner("데이터베이스 연결 확인 중..."):
+            db_info = get_database_info()
+            
+            # 연결 정보
+            st.markdown("### 📌 연결 정보")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("서버", f"{db_info['server']}:{db_info['port']}")
+                st.metric("데이터베이스", db_info['database'])
+            with col2:
+                st.metric("사용자", db_info['user'])
+                st.metric("현재 사용 드라이버", db_info['odbc_driver'] or "❌ 없음")
+            
+            # 연결 상태
+            st.markdown("### 🔌 연결 상태")
+            if db_info['connection_status'] == 'Success':
+                st.success("✅ 데이터베이스 연결 성공!")
+            else:
+                st.error(f"❌ 데이터베이스 연결 실패")
+                if db_info['connection_error']:
+                    st.error(f"**오류 메시지**: {db_info['connection_error']}")
+                    
+                    # 오류 해결 가이드
+                    st.markdown("### 💡 문제 해결 가이드")
+                    if 'IM002' in db_info['connection_error']:
+                        st.warning("""
+                        **ODBC 드라이버 문제**
+                        - ODBC 드라이버가 설치되지 않았거나 시스템에서 찾을 수 없습니다.
+                        - 아래에서 사용 가능한 드라이버를 확인하세요.
+                        """)
+                    elif '08001' in db_info['connection_error'] or 'timeout' in db_info['connection_error'].lower():
+                        st.warning("""
+                        **네트워크 연결 문제**
+                        - 서버 주소와 포트 번호가 올바른지 확인하세요.
+                        - 방화벽이 1433 포트를 차단하고 있지 않은지 확인하세요.
+                        - SQL Server가 실행 중인지 확인하세요.
+                        """)
+                    elif '18456' in db_info['connection_error']:
+                        st.warning("""
+                        **인증 문제**
+                        - 사용자명과 비밀번호가 올바른지 확인하세요.
+                        - SQL Server 인증이 활성화되어 있는지 확인하세요.
+                        """)
+            
+            # 사용 가능한 드라이버 목록
+            st.markdown("### 🔧 시스템에 설치된 ODBC 드라이버")
+            if db_info['available_drivers']:
+                sql_drivers = [d for d in db_info['available_drivers'] if 'SQL Server' in d or 'sql' in d.lower()]
+                other_drivers = [d for d in db_info['available_drivers'] if d not in sql_drivers]
+                
+                if sql_drivers:
+                    st.success(f"**SQL Server 드라이버 ({len(sql_drivers)}개 발견)**")
+                    for driver in sql_drivers:
+                        icon = "✅" if driver == db_info['odbc_driver'] else "⚪"
+                        st.text(f"{icon} {driver}")
+                else:
+                    st.error("❌ SQL Server 드라이버가 설치되지 않았습니다!")
+                    st.markdown("""
+                    **드라이버 설치 방법:**
+                    1. [Microsoft ODBC Driver for SQL Server 다운로드](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server)
+                    2. Windows: 설치 프로그램 실행
+                    3. Linux: 패키지 매니저로 설치 (`sudo apt-get install msodbcsql18` 또는 유사)
+                    4. 설치 후 Streamlit 앱 재시작
+                    """)
+                
+                if other_drivers:
+                    with st.expander(f"기타 ODBC 드라이버 ({len(other_drivers)}개)"):
+                        for driver in other_drivers:
+                            st.text(f"⚪ {driver}")
+            else:
+                st.error("❌ 시스템에 ODBC 드라이버가 설치되지 않았습니다!")
+            
+            # 연결 문자열 (디버깅용)
+            with st.expander("🔧 연결 문자열 (디버깅용)"):
+                # 비밀번호 마스킹
+                masked_conn_str = db_info['connection_string'].replace(
+                    f"PWD={db_info.get('password', '')}",
+                    "PWD=****"
+                )
+                st.code(masked_conn_str, language="text")
 
 
 if __name__ == "__main__":
