@@ -222,7 +222,7 @@ def generate_payslip_pdf(
     
     # 5. 실수령액
     net_data = [
-        ['실수령액', f"{format_money(salary_result['net_payment'])}원']
+        ['실수령액', f"{format_money(salary_result['net_payment'])}원"]
     ]
     
     net_table = Table(net_data, colWidths=[60*mm, 60*mm])
