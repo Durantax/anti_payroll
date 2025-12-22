@@ -104,7 +104,15 @@ class AppProvider with ChangeNotifier {
       _appSettings = await _apiService.getAppSettings();
       notifyListeners();
     } catch (e) {
-      print('앱 설정 로드 실패: $e');
+      print('앱 설정 로드 실패: $e - 기본 OneDrive 경로 사용');
+      // 서버에서 설정을 가져오지 못하면 기본 OneDrive 경로로 초기화
+      _appSettings = AppSettings(
+        serverUrl: 'http://25.2.89.129:8000',
+        apiKey: '',
+        downloadBasePath: PathHelper.getDefaultDownloadPath(),
+        useClientSubfolders: true,
+      );
+      notifyListeners();
     }
   }
 
@@ -738,8 +746,8 @@ class AppProvider with ChangeNotifier {
     try {
       _setLoading(true);
       
-      // 자동 경로 사용
-      final basePath = settings?.downloadBasePath ?? '';
+      // 자동 경로 사용 (기본값: OneDrive)
+      final basePath = settings?.downloadBasePath ?? PathHelper.getDefaultDownloadPath();
       final useSubfolders = settings?.useClientSubfolders ?? true;
       
       await FileEmailService.generatePayslipPdf(
@@ -747,7 +755,7 @@ class AppProvider with ChangeNotifier {
         result: result,
         year: selectedYear,
         month: selectedMonth,
-        basePath: basePath.isNotEmpty ? basePath : PathHelper.getDefaultDownloadPath(),
+        basePath: basePath,
         useClientSubfolders: useSubfolders,
       );
       _setError(null);
@@ -778,8 +786,8 @@ class AppProvider with ChangeNotifier {
       int successCount = 0;
       int totalCount = finalizedWorkers.length;
       
-      // 기본 경로 사용 (설정되어 있으면)
-      final basePath = settings?.downloadBasePath ?? '';
+      // 기본 경로 사용 (기본값: OneDrive)
+      final basePath = settings?.downloadBasePath ?? PathHelper.getDefaultDownloadPath();
       final useSubfolders = settings?.useClientSubfolders ?? true;
       
       for (var i = 0; i < finalizedWorkers.length; i++) {
@@ -793,7 +801,7 @@ class AppProvider with ChangeNotifier {
             result: result,
             year: selectedYear,
             month: selectedMonth,
-            basePath: basePath.isNotEmpty ? basePath : PathHelper.getDefaultDownloadPath(),
+            basePath: basePath,
             useClientSubfolders: useSubfolders,
           );
           successCount++;
@@ -809,7 +817,7 @@ class AppProvider with ChangeNotifier {
       _setError('명세서 $successCount개 생성 완료!');
       
       // 폴더 열기 (Windows)
-      if (basePath.isNotEmpty && Platform.isWindows) {
+      if (Platform.isWindows) {
         final folderPath = PathHelper.getClientFolderPath(
           basePath: basePath,
           clientName: _selectedClient!.name,
@@ -840,8 +848,8 @@ class AppProvider with ChangeNotifier {
     try {
       _setLoading(true);
 
-      // PDF 생성 (자동 경로 사용)
-      final basePath = settings?.downloadBasePath ?? '';
+      // PDF 생성 (기본값: OneDrive)
+      final basePath = settings?.downloadBasePath ?? PathHelper.getDefaultDownloadPath();
       final useSubfolders = settings?.useClientSubfolders ?? true;
       
       final pdfFile = await FileEmailService.generatePayslipPdf(
@@ -849,7 +857,7 @@ class AppProvider with ChangeNotifier {
         result: result,
         year: selectedYear,
         month: selectedMonth,
-        basePath: basePath.isNotEmpty ? basePath : PathHelper.getDefaultDownloadPath(),
+        basePath: basePath,
         useClientSubfolders: useSubfolders,
       );
 
