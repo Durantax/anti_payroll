@@ -1329,6 +1329,37 @@ def show_settings():
     """설정 탭"""
     st.header("⚙️ 설정")
     
+    # 데이터베이스 정보 표시
+    from database import get_database_info
+    
+    st.subheader("📊 데이터베이스 정보")
+    db_info = get_database_info()
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("서버", f"{db_info['server']}:{db_info['port']}")
+    with col2:
+        st.metric("데이터베이스", db_info['database'])
+    with col3:
+        st.metric("사용자", db_info['user'])
+    
+    # ODBC 드라이버 정보
+    if db_info['odbc_driver']:
+        st.success(f"✅ ODBC 드라이버: {db_info['odbc_driver']}")
+    else:
+        st.error("❌ ODBC 드라이버를 찾을 수 없습니다")
+    
+    # 연결 상태
+    if db_info['connection_status'] == 'Success':
+        st.success("🟢 데이터베이스 연결: 정상")
+    else:
+        st.error("🔴 데이터베이스 연결: 실패")
+        if db_info['connection_error']:
+            with st.expander("오류 상세"):
+                st.error(db_info['connection_error'])
+    
+    st.divider()
+    
     # 파일 저장 경로
     st.subheader("📁 파일 저장 경로")
     
