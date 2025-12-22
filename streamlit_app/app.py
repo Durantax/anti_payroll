@@ -147,44 +147,50 @@ def load_workers(client_id, year, month):
     ym = f"{year:04d}-{month:02d}"
     sql = """
         SELECT 
-            e.ID as Id,
-            e.거래처ID as ClientId,
-            e.이름 as Name,
-            e.생년월일 as BirthDate,
-            e.고용형태 as EmploymentType,
-            e.급여형태 as SalaryType,
-            e.월급여 as MonthlySalary,
-            e.시급 as HourlyRate,
-            e.소정근로시간 as NormalHours,
-            e.식대 as FoodAllowance,
-            e.차량유지비 as CarAllowance,
-            e.가입4대보험 as Has4Insurance,
-            e.부양가족수 as TaxDependents,
-            e.자녀수 as ChildrenCount,
-            e.비과세식대 as TaxFreeMeal,
-            e.비과세차량 as TaxFreeCarMaintenance,
-            e.기타비과세 as OtherTaxFree,
-            e.소득세율 as IncomeTaxRate,
-            e.이메일 as Email,
-            e.전화번호 as Phone,
-            m.정상근로시간 as NormalWorkHours,
-            m.연장근로시간 as OvertimeHours,
-            m.야간근로시간 as NightHours,
-            m.휴일근로시간 as HolidayHours,
-            m.주소정근로시간 as WeeklyHours,
-            m.주수 as WeekCount,
-            m.상여금 as Bonus,
-            m.추가지급1 as AdditionalPay1,
-            m.추가지급2 as AdditionalPay2,
-            m.추가지급3 as AdditionalPay3,
-            m.추가공제1 as AdditionalDeduct1,
-            m.추가공제2 as AdditionalDeduct2,
-            m.추가공제3 as AdditionalDeduct3
-        FROM 직원 e
-        LEFT JOIN 월별근로데이터 m 
-            ON e.ID = m.직원ID AND m.년월 = ?
-        WHERE e.거래처ID = ?
-        ORDER BY e.이름
+            e.Id,
+            e.ClientId,
+            e.Name,
+            e.BirthDate,
+            e.EmploymentType,
+            e.SalaryType,
+            e.MonthlySalary,
+            e.HourlyRate,
+            e.NormalHours,
+            e.FoodAllowance,
+            e.CarAllowance,
+            e.HasNationalPension,
+            e.HasHealthInsurance,
+            e.HasEmploymentInsurance,
+            e.TaxDependents,
+            e.ChildrenCount,
+            e.IncomeTaxRate,
+            e.TaxFreeMeal,
+            e.TaxFreeCarMaintenance,
+            e.OtherTaxFree,
+            e.UseEmail,
+            e.EmailTo,
+            e.EmailCc,
+            e.Phone,
+            m.NormalHours as NormalWorkHours,
+            m.OvertimeHours,
+            m.NightHours,
+            m.HolidayHours,
+            m.WeeklyHours,
+            m.WeekCount,
+            m.Bonus,
+            m.AdditionalPay1,
+            m.AdditionalPay2,
+            m.AdditionalPay3,
+            m.AdditionalDeduct1,
+            m.AdditionalDeduct2,
+            m.AdditionalDeduct3,
+            m.HireDate,
+            m.TerminationDate
+        FROM dbo.Employees e
+        LEFT JOIN dbo.PayrollMonthlyInput m 
+            ON e.Id = m.EmployeeId AND m.Ym = ?
+        WHERE e.ClientId = ?
+        ORDER BY e.Name
     """
     workers = fetch_all(sql, (ym, client_id))
     
@@ -579,6 +585,28 @@ def show_monthly_data_input(workers, selected_client):
             
             st.divider()
             
+            # 입퇴사일
+            st.write("**📅 입퇴사 정보**")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                hire_date = st.date_input(
+                    "입사일",
+                    value=worker.get('HireDate') if worker.get('HireDate') else None,
+                    key=key_prefix + "hire_date",
+                    help="직원 입사일 (필수)"
+                )
+            
+            with col2:
+                termination_date = st.date_input(
+                    "퇴사일",
+                    value=worker.get('TerminationDate') if worker.get('TerminationDate') else None,
+                    key=key_prefix + "termination_date",
+                    help="퇴사일 (재직 중이면 비워두세요)"
+                )
+            
+            st.divider()
+            
             # 추가 지급/공제
             st.write("**💰 추가 지급/공제**")
             col1, col2 = st.columns(2)
@@ -674,6 +702,14 @@ def save_monthly_data_from_session(employee_id, ym):
         additional_deduct2 = st.session_state.get(key_prefix + "additional_deduct2", 0)
         additional_deduct3 = st.session_state.get(key_prefix + "additional_deduct3", 0)
         
+        # 입퇴사일 가져오기
+        hire_date = st.session_state.get(key_prefix + "hire_date")
+        termination_date = st.session_state.get(key_prefix + "termination_date")
+        
+        # 입사일이 없으면 기본값 사용
+        if not hire_date:
+            hire_date = '1900-01-01'
+        
         # UPSERT (있으면 업데이트, 없으면 삽입)
         sql_check = "SELECT Id FROM dbo.PayrollMonthlyInput WHERE EmployeeId = ? AND Ym = ?"
         existing = fetch_one(sql_check, (employee_id, ym))
@@ -685,7 +721,8 @@ def save_monthly_data_from_session(employee_id, ym):
                     NormalHours = ?, OvertimeHours = ?, NightHours = ?, HolidayHours = ?,
                     WeeklyHours = ?, WeekCount = ?, Bonus = ?,
                     AdditionalPay1 = ?, AdditionalPay2 = ?, AdditionalPay3 = ?,
-                    AdditionalDeduct1 = ?, AdditionalDeduct2 = ?, AdditionalDeduct3 = ?
+                    AdditionalDeduct1 = ?, AdditionalDeduct2 = ?, AdditionalDeduct3 = ?,
+                    HireDate = ?, TerminationDate = ?
                 WHERE EmployeeId = ? AND Ym = ?
             """
             execute_query(sql, (
@@ -693,6 +730,7 @@ def save_monthly_data_from_session(employee_id, ym):
                 weekly_hours, week_count, bonus,
                 additional_pay1, additional_pay2, additional_pay3,
                 additional_deduct1, additional_deduct2, additional_deduct3,
+                hire_date, termination_date,
                 employee_id, ym
             ))
         else:
@@ -702,14 +740,16 @@ def save_monthly_data_from_session(employee_id, ym):
                     EmployeeId, Ym, NormalHours, OvertimeHours, NightHours, HolidayHours,
                     WeeklyHours, WeekCount, Bonus,
                     AdditionalPay1, AdditionalPay2, AdditionalPay3,
-                    AdditionalDeduct1, AdditionalDeduct2, AdditionalDeduct3
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    AdditionalDeduct1, AdditionalDeduct2, AdditionalDeduct3,
+                    HireDate, TerminationDate
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             execute_query(sql, (
                 employee_id, ym, normal_hours, overtime_hours, night_hours, holiday_hours,
                 weekly_hours, week_count, bonus,
                 additional_pay1, additional_pay2, additional_pay3,
-                additional_deduct1, additional_deduct2, additional_deduct3
+                additional_deduct1, additional_deduct2, additional_deduct3,
+                hire_date, termination_date
             ))
         
         return True

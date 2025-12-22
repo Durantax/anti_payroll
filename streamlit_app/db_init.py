@@ -73,6 +73,8 @@ BEGIN
         [AdditionalDeduct1] DECIMAL(18,2) NOT NULL DEFAULT 0,
         [AdditionalDeduct2] DECIMAL(18,2) NOT NULL DEFAULT 0,
         [AdditionalDeduct3] DECIMAL(18,2) NOT NULL DEFAULT 0,
+        [HireDate] DATE NOT NULL DEFAULT '1900-01-01',
+        [TerminationDate] DATE NULL,
         [CreatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
         [UpdatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
         CONSTRAINT [UQ_PayrollMonthlyInput_EmployeeId_Ym] UNIQUE ([EmployeeId], [Ym]),
@@ -83,12 +85,30 @@ BEGIN
     -- 인덱스 생성
     CREATE INDEX [IX_PayrollMonthlyInput_EmployeeId] ON [dbo].[PayrollMonthlyInput] ([EmployeeId]);
     CREATE INDEX [IX_PayrollMonthlyInput_Ym] ON [dbo].[PayrollMonthlyInput] ([Ym]);
+    CREATE INDEX [IX_PayrollMonthlyInput_HireDate] ON [dbo].[PayrollMonthlyInput] ([HireDate]);
+    CREATE INDEX [IX_PayrollMonthlyInput_TerminationDate] ON [dbo].[PayrollMonthlyInput] ([TerminationDate]);
     
     PRINT 'Table [dbo].[PayrollMonthlyInput] created successfully.';
 END
 ELSE
 BEGIN
     PRINT 'Table [dbo].[PayrollMonthlyInput] already exists.';
+    
+    -- 기존 테이블에 HireDate 컬럼 추가 (없는 경우)
+    IF COL_LENGTH('dbo.PayrollMonthlyInput', 'HireDate') IS NULL
+    BEGIN
+        ALTER TABLE dbo.PayrollMonthlyInput
+        ADD HireDate DATE NOT NULL CONSTRAINT DF_PayrollMonthlyInput_HireDate DEFAULT ('1900-01-01');
+        PRINT 'HireDate column added successfully.';
+    END
+    
+    -- 기존 테이블에 TerminationDate 컬럼 추가 (없는 경우)
+    IF COL_LENGTH('dbo.PayrollMonthlyInput', 'TerminationDate') IS NULL
+    BEGIN
+        ALTER TABLE dbo.PayrollMonthlyInput
+        ADD TerminationDate DATE NULL;
+        PRINT 'TerminationDate column added successfully.';
+    END
 END
 """
 
