@@ -150,8 +150,8 @@ class ApiService {
           overtimeHours: (data['overtimeHours'] as num?)?.toDouble() ?? 0,
           nightHours: (data['nightHours'] as num?)?.toDouble() ?? 0,
           holidayHours: (data['holidayHours'] as num?)?.toDouble() ?? 0,
-          weeklyHours: 40, // 서버에 없는 필드는 기본값 사용
-          weekCount: 4,
+          weeklyHours: (data['weeklyHours'] as num?)?.toDouble() ?? 40,  // 서버에서 받아옴
+          weekCount: (data['weekCount'] as int?) ?? 4,  // 서버에서 받아옴
           bonus: ((data['bonus'] as num?)?.toDouble() ?? 0).round(),
           additionalPay1: 0,
           additionalPay1Name: '',
@@ -186,6 +186,8 @@ class ApiService {
       'overtimeHours': data.overtimeHours.toDouble(),
       'nightHours': data.nightHours.toDouble(),
       'holidayHours': data.holidayHours.toDouble(),
+      'weeklyHours': data.weeklyHours.toDouble(),  // 추가: 주소정근로시간
+      'weekCount': data.weekCount,  // 추가: 개근주수
     };
 
     final response = await http.post(
