@@ -11,6 +11,7 @@ import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 
 import '../core/models.dart';
+import '../utils/path_helper.dart';
 
 class FileEmailService {
   // ========== Excel 템플릿 생성 ==========
@@ -214,6 +215,8 @@ class FileEmailService {
     required int year,
     required int month,
     required List<SalaryResult> results,
+    String? customBasePath, // null이면 사용자가 직접 선택
+    bool useClientSubfolders = true,
   }) async {
     final rows = <List<String>>[];
 
@@ -263,14 +266,34 @@ class FileEmailService {
 
     final csv = const ListToCsvConverter().convert(rows);
     
-    // 사용자가 저장 위치 선택
     final fileName = '${clientName}_${year}년${month}월_급여대장.csv';
-    final outputPath = await FilePicker.platform.saveFile(
-      dialogTitle: 'CSV 파일 저장',
-      fileName: fileName,
-      type: FileType.custom,
-      allowedExtensions: ['csv'],
-    );
+    String? outputPath;
+    
+    if (customBasePath != null && customBasePath.isNotEmpty) {
+      // 설정된 기본 경로 사용
+      final filePath = PathHelper.getFilePath(
+        basePath: customBasePath,
+        clientName: clientName,
+        year: year,
+        month: month,
+        fileType: 'csv',
+        useClientSubfolders: useClientSubfolders,
+      );
+      
+      // 폴더 생성
+      final directory = Directory(filePath).parent;
+      await PathHelper.ensureDirectoryExists(directory.path);
+      
+      outputPath = filePath;
+    } else {
+      // 사용자가 직접 저장 위치 선택
+      outputPath = await FilePicker.platform.saveFile(
+        dialogTitle: 'CSV 파일 저장',
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+      );
+    }
 
     if (outputPath == null) {
       throw Exception('파일 저장이 취소되었습니다.');

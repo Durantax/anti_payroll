@@ -500,16 +500,22 @@ class SmtpConfig {
 class AppSettings {
   final String serverUrl;
   final String apiKey;
+  final String downloadBasePath; // 기본 다운로드 경로
+  final bool useClientSubfolders; // 거래처별 하위 폴더 생성 여부
 
   AppSettings({
     required this.serverUrl,
     this.apiKey = '',
+    this.downloadBasePath = '',
+    this.useClientSubfolders = true,
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
     return AppSettings(
       serverUrl: json['serverUrl'] as String? ?? 'http://localhost:8000',
       apiKey: json['apiKey'] as String? ?? '',
+      downloadBasePath: json['downloadBasePath'] as String? ?? '',
+      useClientSubfolders: json['useClientSubfolders'] as bool? ?? true,
     );
   }
 
@@ -517,7 +523,23 @@ class AppSettings {
     return {
       'serverUrl': serverUrl,
       'apiKey': apiKey,
+      'downloadBasePath': downloadBasePath,
+      'useClientSubfolders': useClientSubfolders,
     };
+  }
+
+  AppSettings copyWith({
+    String? serverUrl,
+    String? apiKey,
+    String? downloadBasePath,
+    bool? useClientSubfolders,
+  }) {
+    return AppSettings(
+      serverUrl: serverUrl ?? this.serverUrl,
+      apiKey: apiKey ?? this.apiKey,
+      downloadBasePath: downloadBasePath ?? this.downloadBasePath,
+      useClientSubfolders: useClientSubfolders ?? this.useClientSubfolders,
+    );
   }
 }
 
