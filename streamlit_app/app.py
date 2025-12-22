@@ -961,66 +961,17 @@ def show_employee_management(workers, selected_client):
             else:
                 salary_info = f"시급 {format_money(worker.get('HourlyRate', 0))}"
             
-            # 직원 카드 스타일
-            card_style = """
-            <div style="
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                border-radius: 10px;
-                padding: 15px;
-                margin-bottom: 10px;
-                cursor: pointer;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                border: 3px solid #27ae60;
-            ">
-                <div style="color: white; font-size: 16px; font-weight: bold;">
-                    👤 {name}
-                </div>
-                <div style="color: #f0f0f0; font-size: 13px; margin-top: 5px;">
-                    🎂 {birth_date} | {employment_type}
-                </div>
-                <div style="color: #ffd700; font-size: 14px; margin-top: 5px; font-weight: bold;">
-                    💰 {salary}
-                </div>
-            </div>
-            """ if is_selected else """
-            <div style="
-                background: white;
-                border-radius: 10px;
-                padding: 15px;
-                margin-bottom: 10px;
-                cursor: pointer;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-                border-left: 4px solid #3498db;
-            ">
-                <div style="color: #2c3e50; font-size: 16px; font-weight: bold;">
-                    👤 {name}
-                </div>
-                <div style="color: #7f8c8d; font-size: 13px; margin-top: 5px;">
-                    🎂 {birth_date} | {employment_type}
-                </div>
-                <div style="color: #27ae60; font-size: 14px; margin-top: 5px; font-weight: bold;">
-                    💰 {salary}
-                </div>
-            </div>
-            """
-            
             employment_display = "정규직" if worker.get('EmploymentType') == 'REGULAR' else "프리랜서"
             
-            st.markdown(
-                card_style.format(
-                    name=worker['Name'],
-                    birth_date=worker['BirthDate'],
-                    employment_type=employment_display,
-                    salary=salary_info
-                ),
-                unsafe_allow_html=True
-            )
+            # 직원 카드를 버튼으로 만들기 (선택 버튼 불필요)
+            button_label = f"👤 {worker['Name']} | {worker['BirthDate']} | {employment_display} | 💰 {salary_info}"
             
-            # 클릭하면 선택
+            # 선택된 상태에 따라 버튼 스타일 적용
             if st.button(
-                "선택",
+                button_label,
                 key=f"select_{worker['Id']}",
-                use_container_width=True
+                use_container_width=True,
+                type="primary" if is_selected else "secondary"
             ):
                 st.session_state.selected_employee_id = worker['Id']
                 st.rerun()
@@ -1063,28 +1014,27 @@ def show_employee_edit_form(selected_client, worker):
     with st.form(f"employee_edit_form_{worker['Id']}"):
         # 기본 정보
         st.write("**📋 기본 정보**")
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         
         with col1:
             name = st.text_input("이름*", value=worker.get('Name', ''))
             birth_date = st.text_input("생년월일 (YYMMDD)*", value=worker.get('BirthDate', ''))
-        
-        with col2:
             employment_type = st.selectbox(
                 "고용형태*",
                 options=['REGULAR', 'FREELANCE'],
                 index=0 if worker.get('EmploymentType') == 'REGULAR' else 1,
                 format_func=lambda x: '정규직' if x == 'REGULAR' else '프리랜서'
             )
-            
+        
+        with col2:
             salary_type = st.selectbox(
                 "급여형태*",
                 options=['MONTHLY', 'HOURLY'],
                 index=0 if worker.get('SalaryType') == 'MONTHLY' else 1,
                 format_func=lambda x: '월급제' if x == 'MONTHLY' else '시급제'
             )
-        
-        with col3:
+            
+            # 월급여와 시급을 같은 컬럼에 표시
             if salary_type == 'MONTHLY':
                 monthly_salary = st.number_input(
                     "월급여*", 
