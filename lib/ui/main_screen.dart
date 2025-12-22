@@ -782,39 +782,27 @@ class _MainScreenContentState extends State<MainScreenContent> {
     // 거래처 하위 폴더 사용 설정이 켜져 있고, 선택된 거래처가 있으면 해당 폴더로 이동
     if (provider.settings?.useClientSubfolders == true && 
         provider.selectedClient != null) {
-      final clientName = provider.selectedClient!.name
-          .replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
-      final year = provider.selectedYear;
-      folderPath = '$basePath\\$clientName\\$year';
+      folderPath = PathHelper.getClientFolderPath(
+        basePath: basePath,
+        clientName: provider.selectedClient!.name,
+        year: provider.selectedYear,
+        month: provider.selectedMonth,
+      );
     }
 
-    // 폴더 존재 여부 확인
+    // 폴더가 없으면 생성
     final directory = Directory(folderPath);
     if (!directory.existsSync()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('폴더가 존재하지 않습니다: $folderPath')),
-      );
-      return;
+      directory.createSync(recursive: true);
     }
 
-    // Windows: explorer로 폴더 열기
+    // 폴더 열기
     if (Platform.isWindows) {
-      Process.run('explorer', [folderPath]).then((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('폴더를 열었습니다'),
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }).catchError((e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('폴더 열기 실패: $e')),
-        );
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Windows에서만 지원됩니다')),
-      );
+      Process.run('explorer', [folderPath]);
+    } else if (Platform.isMacOS) {
+      Process.run('open', [folderPath]);
+    } else if (Platform.isLinux) {
+      Process.run('xdg-open', [folderPath]);
     }
   }
 }
