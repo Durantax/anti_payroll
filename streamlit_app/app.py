@@ -264,8 +264,9 @@ def main():
         return
     
     # 탭 구성
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📊 급여 계산", 
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "📊 급여 계산",
+        "📝 월별 데이터 입력",
         "👥 직원 관리", 
         "📄 문서 생성",
         "📧 이메일 발송",
@@ -276,20 +277,24 @@ def main():
     with tab1:
         show_payroll_calculation(workers, selected_client)
     
-    # 탭 2: 직원 관리
+    # 탭 2: 월별 데이터 입력
     with tab2:
+        show_monthly_data_input(workers, selected_client)
+    
+    # 탭 3: 직원 관리
+    with tab3:
         show_employee_management(workers, selected_client)
     
-    # 탭 3: 문서 생성
-    with tab3:
+    # 탭 4: 문서 생성
+    with tab4:
         show_document_generation(workers, selected_client)
     
-    # 탭 4: 이메일 발송
-    with tab4:
+    # 탭 5: 이메일 발송
+    with tab5:
         show_email_sending(workers, selected_client)
     
-    # 탭 5: 설정
-    with tab5:
+    # 탭 6: 설정
+    with tab6:
         show_settings()
 
 
@@ -383,19 +388,623 @@ def show_payroll_calculation(workers, selected_client):
             st.success(f"### {format_money(result['net_payment'])}원")
 
 
+def show_monthly_data_input(workers, selected_client):
+    """월별 데이터 입력 탭"""
+    st.header("📝 월별 근무 데이터 입력")
+    
+    year = st.session_state.selected_year
+    month = st.session_state.selected_month
+    ym = f"{year:04d}-{month:02d}"
+    
+    if not workers:
+        st.info("등록된 직원이 없습니다. '직원 관리' 탭에서 먼저 직원을 추가하세요.")
+        return
+    
+    st.info(f"📅 {year}년 {month}월 근무 데이터를 입력하세요.")
+    
+    # 일괄 저장 버튼
+    if st.button("💾 전체 저장", type="primary", use_container_width=True):
+        saved_count = 0
+        for worker in workers:
+            if save_monthly_data_from_session(worker['Id'], ym):
+                saved_count += 1
+        st.success(f"✅ {saved_count}명의 데이터가 저장되었습니다!")
+        st.rerun()
+    
+    st.divider()
+    
+    # 직원별 입력 폼
+    for idx, worker in enumerate(workers):
+        with st.expander(f"👤 {worker['Name']} ({worker['BirthDate']})", expanded=idx==0):
+            
+            # 세션 키 생성
+            key_prefix = f"monthly_{worker['Id']}_"
+            
+            # 기본 정보 표시
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.text(f"급여형태: {worker.get('SalaryType', 'HOURLY')}")
+            with col2:
+                if worker.get('SalaryType') == 'MONTHLY':
+                    st.text(f"월급: {format_money(worker.get('MonthlySalary', 0))}원")
+                else:
+                    st.text(f"시급: {format_money(worker.get('HourlyRate', 0))}원")
+            with col3:
+                st.text(f"고용형태: {worker.get('EmploymentType', 'REGULAR')}")
+            
+            st.divider()
+            
+            # 근무 시간
+            st.write("**⏰ 근무 시간**")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                normal_hours = st.number_input(
+                    "정상근로시간",
+                    min_value=0.0,
+                    value=float(worker.get('NormalHours', 0)),
+                    step=0.5,
+                    key=key_prefix + "normal_hours",
+                    help="월 기본 근무 시간"
+                )
+                
+                overtime_hours = st.number_input(
+                    "연장시간 (5인 이상)",
+                    min_value=0.0,
+                    value=float(worker.get('OvertimeHours', 0)),
+                    step=0.5,
+                    key=key_prefix + "overtime_hours",
+                    help="연장근로 시간 (1.5배)"
+                )
+                
+                night_hours = st.number_input(
+                    "야간시간 (5인 이상)",
+                    min_value=0.0,
+                    value=float(worker.get('NightHours', 0)),
+                    step=0.5,
+                    key=key_prefix + "night_hours",
+                    help="야간근로 시간 (0.5배)"
+                )
+            
+            with col2:
+                holiday_hours = st.number_input(
+                    "휴일시간 (5인 이상)",
+                    min_value=0.0,
+                    value=float(worker.get('HolidayHours', 0)),
+                    step=0.5,
+                    key=key_prefix + "holiday_hours",
+                    help="휴일근로 시간 (1.5~2.0배)"
+                )
+                
+                weekly_hours = st.number_input(
+                    "주소정근로시간",
+                    min_value=0.0,
+                    max_value=80.0,
+                    value=float(worker.get('WeeklyHours', 40.0)),
+                    step=1.0,
+                    key=key_prefix + "weekly_hours",
+                    help="주당 소정근로시간 (주휴수당 계산 기준)"
+                )
+                
+                week_count = st.number_input(
+                    "개근주수",
+                    min_value=0,
+                    max_value=5,
+                    value=int(worker.get('WeekCount', 4)),
+                    step=1,
+                    key=key_prefix + "week_count",
+                    help="실제 근무한 주수 (주휴수당 계산)"
+                )
+            
+            st.divider()
+            
+            # 추가 지급/공제
+            st.write("**💰 추가 지급/공제**")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.write("**지급 항목**")
+                
+                bonus = st.number_input(
+                    "상여금",
+                    min_value=0,
+                    value=int(worker.get('Bonus', 0)),
+                    step=10000,
+                    key=key_prefix + "bonus"
+                )
+                
+                additional_pay1 = st.number_input(
+                    "추가지급 1",
+                    min_value=0,
+                    value=int(worker.get('AdditionalPay1', 0)),
+                    step=10000,
+                    key=key_prefix + "additional_pay1"
+                )
+                
+                additional_pay2 = st.number_input(
+                    "추가지급 2",
+                    min_value=0,
+                    value=int(worker.get('AdditionalPay2', 0)),
+                    step=10000,
+                    key=key_prefix + "additional_pay2"
+                )
+                
+                additional_pay3 = st.number_input(
+                    "추가지급 3",
+                    min_value=0,
+                    value=int(worker.get('AdditionalPay3', 0)),
+                    step=10000,
+                    key=key_prefix + "additional_pay3"
+                )
+            
+            with col2:
+                st.write("**공제 항목**")
+                
+                additional_deduct1 = st.number_input(
+                    "추가공제 1",
+                    min_value=0,
+                    value=int(worker.get('AdditionalDeduct1', 0)),
+                    step=10000,
+                    key=key_prefix + "additional_deduct1"
+                )
+                
+                additional_deduct2 = st.number_input(
+                    "추가공제 2",
+                    min_value=0,
+                    value=int(worker.get('AdditionalDeduct2', 0)),
+                    step=10000,
+                    key=key_prefix + "additional_deduct2"
+                )
+                
+                additional_deduct3 = st.number_input(
+                    "추가공제 3",
+                    min_value=0,
+                    value=int(worker.get('AdditionalDeduct3', 0)),
+                    step=10000,
+                    key=key_prefix + "additional_deduct3"
+                )
+            
+            # 개별 저장 버튼
+            if st.button(f"💾 {worker['Name']} 저장", key=f"save_{worker['Id']}", use_container_width=True):
+                if save_monthly_data_from_session(worker['Id'], ym):
+                    st.success(f"✅ {worker['Name']}님의 데이터가 저장되었습니다!")
+                    st.rerun()
+                else:
+                    st.error("❌ 저장 실패")
+
+
+def save_monthly_data_from_session(employee_id, ym):
+    """세션 상태에서 월별 데이터 저장"""
+    try:
+        key_prefix = f"monthly_{employee_id}_"
+        
+        # 세션에서 값 가져오기
+        normal_hours = st.session_state.get(key_prefix + "normal_hours", 0)
+        overtime_hours = st.session_state.get(key_prefix + "overtime_hours", 0)
+        night_hours = st.session_state.get(key_prefix + "night_hours", 0)
+        holiday_hours = st.session_state.get(key_prefix + "holiday_hours", 0)
+        weekly_hours = st.session_state.get(key_prefix + "weekly_hours", 40.0)
+        week_count = st.session_state.get(key_prefix + "week_count", 4)
+        bonus = st.session_state.get(key_prefix + "bonus", 0)
+        additional_pay1 = st.session_state.get(key_prefix + "additional_pay1", 0)
+        additional_pay2 = st.session_state.get(key_prefix + "additional_pay2", 0)
+        additional_pay3 = st.session_state.get(key_prefix + "additional_pay3", 0)
+        additional_deduct1 = st.session_state.get(key_prefix + "additional_deduct1", 0)
+        additional_deduct2 = st.session_state.get(key_prefix + "additional_deduct2", 0)
+        additional_deduct3 = st.session_state.get(key_prefix + "additional_deduct3", 0)
+        
+        # UPSERT (있으면 업데이트, 없으면 삽입)
+        sql_check = "SELECT Id FROM dbo.PayrollMonthlyInput WHERE EmployeeId = ? AND Ym = ?"
+        existing = fetch_one(sql_check, (employee_id, ym))
+        
+        if existing:
+            # 업데이트
+            sql = """
+                UPDATE dbo.PayrollMonthlyInput SET
+                    NormalHours = ?, OvertimeHours = ?, NightHours = ?, HolidayHours = ?,
+                    WeeklyHours = ?, WeekCount = ?, Bonus = ?,
+                    AdditionalPay1 = ?, AdditionalPay2 = ?, AdditionalPay3 = ?,
+                    AdditionalDeduct1 = ?, AdditionalDeduct2 = ?, AdditionalDeduct3 = ?
+                WHERE EmployeeId = ? AND Ym = ?
+            """
+            execute_query(sql, (
+                normal_hours, overtime_hours, night_hours, holiday_hours,
+                weekly_hours, week_count, bonus,
+                additional_pay1, additional_pay2, additional_pay3,
+                additional_deduct1, additional_deduct2, additional_deduct3,
+                employee_id, ym
+            ))
+        else:
+            # 삽입
+            sql = """
+                INSERT INTO dbo.PayrollMonthlyInput (
+                    EmployeeId, Ym, NormalHours, OvertimeHours, NightHours, HolidayHours,
+                    WeeklyHours, WeekCount, Bonus,
+                    AdditionalPay1, AdditionalPay2, AdditionalPay3,
+                    AdditionalDeduct1, AdditionalDeduct2, AdditionalDeduct3
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """
+            execute_query(sql, (
+                employee_id, ym, normal_hours, overtime_hours, night_hours, holiday_hours,
+                weekly_hours, week_count, bonus,
+                additional_pay1, additional_pay2, additional_pay3,
+                additional_deduct1, additional_deduct2, additional_deduct3
+            ))
+        
+        return True
+    except Exception as e:
+        st.error(f"데이터베이스 오류: {e}")
+        return False
+
+
 def show_employee_management(workers, selected_client):
     """직원 관리 탭"""
     st.header("👥 직원 관리")
-    st.info("🚧 직원 추가/수정/삭제 기능은 개발 중입니다.")
+    
+    # 액션 버튼
+    col1, col2, col3 = st.columns([2, 2, 6])
+    with col1:
+        if st.button("➕ 직원 추가", use_container_width=True):
+            st.session_state.show_employee_form = True
+            st.session_state.editing_employee_id = None
+    with col2:
+        if st.button("🔄 새로고침", use_container_width=True):
+            st.rerun()
+    
+    # 직원 추가/수정 폼
+    if st.session_state.get('show_employee_form', False):
+        show_employee_form(selected_client, st.session_state.get('editing_employee_id'))
+    
+    st.divider()
     
     # 직원 목록 표시
-    if workers:
-        df = pd.DataFrame(workers)
-        display_columns = ['Name', 'BirthDate', 'SalaryType', 'MonthlySalary', 
-                          'HourlyRate', 'EmploymentType']
-        available_columns = [col for col in display_columns if col in df.columns]
+    if not workers:
+        st.info("등록된 직원이 없습니다. '직원 추가' 버튼을 클릭하세요.")
+        return
+    
+    st.subheader(f"📋 직원 목록 ({len(workers)}명)")
+    
+    # 직원 카드 형식으로 표시
+    for worker in workers:
+        with st.expander(
+            f"👤 {worker['Name']} ({worker['BirthDate']}) - "
+            f"{worker.get('SalaryType', 'HOURLY')} - "
+            f"{format_money(worker.get('MonthlySalary', 0) or worker.get('HourlyRate', 0))}원"
+        ):
+            col1, col2 = st.columns([4, 1])
+            
+            with col1:
+                # 기본 정보
+                st.write("**📋 기본 정보**")
+                info_col1, info_col2, info_col3 = st.columns(3)
+                with info_col1:
+                    st.text(f"이름: {worker['Name']}")
+                    st.text(f"생년월일: {worker['BirthDate']}")
+                with info_col2:
+                    st.text(f"급여형태: {worker.get('SalaryType', 'HOURLY')}")
+                    st.text(f"고용형태: {worker.get('EmploymentType', 'REGULAR')}")
+                with info_col3:
+                    if worker.get('SalaryType') == 'MONTHLY':
+                        st.text(f"월급: {format_money(worker.get('MonthlySalary', 0))}원")
+                    else:
+                        st.text(f"시급: {format_money(worker.get('HourlyRate', 0))}원")
+                
+                # 4대보험
+                st.write("**💳 4대보험**")
+                insurance_col1, insurance_col2, insurance_col3 = st.columns(3)
+                with insurance_col1:
+                    st.text(f"국민연금: {'✅' if worker.get('HasNationalPension') else '❌'}")
+                with insurance_col2:
+                    st.text(f"건강보험: {'✅' if worker.get('HasHealthInsurance') else '❌'}")
+                with insurance_col3:
+                    st.text(f"고용보험: {'✅' if worker.get('HasEmploymentInsurance') else '❌'}")
+                
+                # 이메일
+                if worker.get('UseEmail'):
+                    st.write("**📧 이메일**")
+                    st.text(f"발송: {worker.get('EmailTo', '-')}")
+                    if worker.get('EmailCc'):
+                        st.text(f"참조: {worker['EmailCc']}")
+            
+            with col2:
+                # 액션 버튼
+                if st.button("✏️ 수정", key=f"edit_{worker['Id']}", use_container_width=True):
+                    st.session_state.show_employee_form = True
+                    st.session_state.editing_employee_id = worker['Id']
+                    st.rerun()
+                
+                if st.button("🗑️ 삭제", key=f"delete_{worker['Id']}", use_container_width=True):
+                    if delete_employee(worker['Id']):
+                        st.success(f"✅ {worker['Name']}님이 삭제되었습니다.")
+                        st.rerun()
+                    else:
+                        st.error("❌ 삭제 실패")
+
+
+def show_employee_form(selected_client, employee_id=None):
+    """직원 추가/수정 폼"""
+    
+    # 수정 모드인 경우 기존 데이터 로드
+    employee = None
+    if employee_id:
+        sql = "SELECT * FROM dbo.Employees WHERE Id = ?"
+        employee = fetch_one(sql, (employee_id,))
+        st.subheader(f"✏️ 직원 수정: {employee['Name']}")
+    else:
+        st.subheader("➕ 신규 직원 추가")
+    
+    with st.form("employee_form"):
+        # 기본 정보
+        st.write("**📋 기본 정보**")
+        col1, col2, col3 = st.columns(3)
         
-        st.dataframe(df[available_columns], use_container_width=True)
+        with col1:
+            name = st.text_input("이름*", value=employee['Name'] if employee else "")
+            birth_date = st.text_input("생년월일 (YYMMDD)*", value=employee['BirthDate'] if employee else "")
+        
+        with col2:
+            employment_type = st.selectbox(
+                "고용형태*",
+                options=['REGULAR', 'FREELANCE'],
+                index=0 if not employee else (0 if employee['EmploymentType'] == 'REGULAR' else 1),
+                format_func=lambda x: '정규직' if x == 'REGULAR' else '프리랜서'
+            )
+            
+            salary_type = st.selectbox(
+                "급여형태*",
+                options=['MONTHLY', 'HOURLY'],
+                index=0 if not employee else (0 if employee['SalaryType'] == 'MONTHLY' else 1),
+                format_func=lambda x: '월급제' if x == 'MONTHLY' else '시급제'
+            )
+        
+        with col3:
+            if salary_type == 'MONTHLY':
+                monthly_salary = st.number_input(
+                    "월급여*", 
+                    min_value=0, 
+                    value=employee['MonthlySalary'] if employee else 0,
+                    step=10000
+                )
+                hourly_rate = 0
+            else:
+                hourly_rate = st.number_input(
+                    "시급*", 
+                    min_value=0, 
+                    value=employee['HourlyRate'] if employee else 0,
+                    step=100
+                )
+                monthly_salary = 0
+        
+        st.divider()
+        
+        # 4대보험
+        st.write("**💳 4대보험 가입 여부**")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            has_pension = st.checkbox(
+                "국민연금", 
+                value=employee['HasNationalPension'] if employee else True
+            )
+        with col2:
+            has_health = st.checkbox(
+                "건강보험", 
+                value=employee['HasHealthInsurance'] if employee else True
+            )
+        with col3:
+            has_employment = st.checkbox(
+                "고용보험", 
+                value=employee['HasEmploymentInsurance'] if employee else True
+            )
+        
+        st.divider()
+        
+        # 세금 관련
+        st.write("**💰 세금 관련**")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            tax_dependents = st.number_input(
+                "공제대상 가족수 (본인 포함)",
+                min_value=1,
+                max_value=20,
+                value=employee['TaxDependents'] if employee else 1
+            )
+        with col2:
+            children_count = st.number_input(
+                "8~20세 자녀수",
+                min_value=0,
+                max_value=10,
+                value=employee['ChildrenCount'] if employee else 0
+            )
+        with col3:
+            income_tax_rate = st.selectbox(
+                "소득세율",
+                options=[80, 100, 120],
+                index=1 if not employee else ([80, 100, 120].index(employee['IncomeTaxRate'])),
+                format_func=lambda x: f"{x}%"
+            )
+        
+        st.divider()
+        
+        # 비과세 항목
+        st.write("**🎁 비과세 항목 (월 기준)**")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            tax_free_meal = st.number_input(
+                "식대 (최대 20만원)",
+                min_value=0,
+                max_value=200000,
+                value=employee['TaxFreeMeal'] if employee else 0,
+                step=10000
+            )
+        with col2:
+            tax_free_car = st.number_input(
+                "차량유지비 (최대 20만원)",
+                min_value=0,
+                max_value=200000,
+                value=employee['TaxFreeCarMaintenance'] if employee else 0,
+                step=10000
+            )
+        with col3:
+            other_tax_free = st.number_input(
+                "기타 비과세",
+                min_value=0,
+                value=employee['OtherTaxFree'] if employee else 0,
+                step=10000
+            )
+        
+        st.divider()
+        
+        # 이메일 설정
+        st.write("**📧 이메일 발송 설정**")
+        use_email = st.checkbox(
+            "이메일 발송 사용", 
+            value=employee['UseEmail'] if employee else False
+        )
+        
+        if use_email:
+            col1, col2 = st.columns(2)
+            with col1:
+                email_to = st.text_input(
+                    "수신 이메일*",
+                    value=employee['EmailTo'] if employee else ""
+                )
+            with col2:
+                email_cc = st.text_input(
+                    "참조 이메일",
+                    value=employee['EmailCc'] if employee else ""
+                )
+        else:
+            email_to = ""
+            email_cc = ""
+        
+        # 폼 제출
+        col1, col2 = st.columns(2)
+        with col1:
+            submitted = st.form_submit_button("💾 저장", use_container_width=True, type="primary")
+        with col2:
+            cancelled = st.form_submit_button("❌ 취소", use_container_width=True)
+        
+        if cancelled:
+            st.session_state.show_employee_form = False
+            st.rerun()
+        
+        if submitted:
+            # 유효성 검사
+            if not name or not birth_date:
+                st.error("❌ 이름과 생년월일은 필수입니다.")
+            elif use_email and not email_to:
+                st.error("❌ 이메일 발송을 사용하려면 수신 이메일을 입력하세요.")
+            else:
+                # 저장
+                if employee_id:
+                    # 수정
+                    success = update_employee(
+                        employee_id, selected_client['Id'], name, birth_date,
+                        employment_type, salary_type, monthly_salary, hourly_rate,
+                        has_pension, has_health, has_employment,
+                        tax_dependents, children_count, income_tax_rate,
+                        tax_free_meal, tax_free_car, other_tax_free,
+                        use_email, email_to, email_cc
+                    )
+                    if success:
+                        st.success(f"✅ {name}님의 정보가 수정되었습니다.")
+                        st.session_state.show_employee_form = False
+                        st.rerun()
+                    else:
+                        st.error("❌ 수정 실패")
+                else:
+                    # 추가
+                    success = add_employee(
+                        selected_client['Id'], name, birth_date,
+                        employment_type, salary_type, monthly_salary, hourly_rate,
+                        has_pension, has_health, has_employment,
+                        tax_dependents, children_count, income_tax_rate,
+                        tax_free_meal, tax_free_car, other_tax_free,
+                        use_email, email_to, email_cc
+                    )
+                    if success:
+                        st.success(f"✅ {name}님이 추가되었습니다.")
+                        st.session_state.show_employee_form = False
+                        st.rerun()
+                    else:
+                        st.error("❌ 추가 실패")
+
+
+def add_employee(client_id, name, birth_date, employment_type, salary_type,
+                monthly_salary, hourly_rate, has_pension, has_health, has_employment,
+                tax_dependents, children_count, income_tax_rate,
+                tax_free_meal, tax_free_car, other_tax_free,
+                use_email, email_to, email_cc):
+    """직원 추가"""
+    try:
+        sql = """
+            INSERT INTO dbo.Employees (
+                ClientId, Name, BirthDate, EmploymentType, SalaryType,
+                MonthlySalary, HourlyRate,
+                HasNationalPension, HasHealthInsurance, HasEmploymentInsurance,
+                TaxDependents, ChildrenCount, IncomeTaxRate,
+                TaxFreeMeal, TaxFreeCarMaintenance, OtherTaxFree,
+                UseEmail, EmailTo, EmailCc
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        execute_query(sql, (
+            client_id, name, birth_date, employment_type, salary_type,
+            monthly_salary, hourly_rate,
+            has_pension, has_health, has_employment,
+            tax_dependents, children_count, income_tax_rate,
+            tax_free_meal, tax_free_car, other_tax_free,
+            use_email, email_to, email_cc
+        ))
+        return True
+    except Exception as e:
+        st.error(f"데이터베이스 오류: {e}")
+        return False
+
+
+def update_employee(employee_id, client_id, name, birth_date, employment_type, salary_type,
+                   monthly_salary, hourly_rate, has_pension, has_health, has_employment,
+                   tax_dependents, children_count, income_tax_rate,
+                   tax_free_meal, tax_free_car, other_tax_free,
+                   use_email, email_to, email_cc):
+    """직원 수정"""
+    try:
+        sql = """
+            UPDATE dbo.Employees SET
+                ClientId = ?, Name = ?, BirthDate = ?, EmploymentType = ?, SalaryType = ?,
+                MonthlySalary = ?, HourlyRate = ?,
+                HasNationalPension = ?, HasHealthInsurance = ?, HasEmploymentInsurance = ?,
+                TaxDependents = ?, ChildrenCount = ?, IncomeTaxRate = ?,
+                TaxFreeMeal = ?, TaxFreeCarMaintenance = ?, OtherTaxFree = ?,
+                UseEmail = ?, EmailTo = ?, EmailCc = ?
+            WHERE Id = ?
+        """
+        execute_query(sql, (
+            client_id, name, birth_date, employment_type, salary_type,
+            monthly_salary, hourly_rate,
+            has_pension, has_health, has_employment,
+            tax_dependents, children_count, income_tax_rate,
+            tax_free_meal, tax_free_car, other_tax_free,
+            use_email, email_to, email_cc,
+            employee_id
+        ))
+        return True
+    except Exception as e:
+        st.error(f"데이터베이스 오류: {e}")
+        return False
+
+
+def delete_employee(employee_id):
+    """직원 삭제"""
+    try:
+        sql = "DELETE FROM dbo.Employees WHERE Id = ?"
+        execute_query(sql, (employee_id,))
+        return True
+    except Exception as e:
+        st.error(f"데이터베이스 오류: {e}")
+        return False
 
 
 def show_document_generation(workers, selected_client):
