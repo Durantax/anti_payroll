@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -415,7 +416,7 @@ class _MainScreenContentState extends State<MainScreenContent> {
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
-                onPressed: () => provider.generateAllPdfs(),
+                onPressed: () => _generateAllPdfs(provider),
                 icon: const Icon(Icons.picture_as_pdf),
                 label: const Text('명세서 일괄생성'),
               ),
@@ -425,6 +426,18 @@ class _MainScreenContentState extends State<MainScreenContent> {
                 icon: const Icon(Icons.email),
                 label: const Text('일괄발송'),
               ),
+              const SizedBox(width: 8),
+              // 폴더 열기 버튼 (설정된 경로가 있을 때만 표시)
+              if (provider.settings?.downloadBasePath != null && 
+                  provider.settings!.downloadBasePath.isNotEmpty)
+                ElevatedButton.icon(
+                  onPressed: () => _openDownloadFolder(provider),
+                  icon: const Icon(Icons.folder_open),
+                  label: const Text('폴더 열기'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                  ),
+                ),
             ],
           ),
         ],
@@ -677,6 +690,131 @@ class _MainScreenContentState extends State<MainScreenContent> {
           SnackBar(content: Text('삭제 실패: $e')),
         );
       }
+    }
+  }
+
+  /// 명세서 일괄생성 (진행 상황 다이얼로그 표시)
+  Future<void> _generateAllPdfs(AppProvider provider) async {
+    if (provider.selectedClient == null || provider.salaryResults.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('생성할 명세서가 없습니다')),
+      );
+      return;
+    }
+
+    // 마감된 직원 확인
+    final finalizedWorkers = provider.salaryResults.entries
+        .where((entry) => provider.isWorkerFinalized(entry.key))
+        .toList();
+
+    if (finalizedWorkers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('마감된 직원이 없습니다')),
+      );
+      return;
+    }
+
+    // 진행 상황 다이얼로그 표시
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('명세서 생성 중'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(provider.error ?? '준비 중...'),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    try {
+      await provider.generateAllPdfs();
+      
+      if (mounted) {
+        Navigator.of(context).pop(); // 다이얼로그 닫기
+        
+        // 성공 메시지
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.error ?? '명세서 생성 완료!'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // 다이얼로그 닫기
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('명세서 생성 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// 다운로드 폴더 열기 (Windows 전용)
+  void _openDownloadFolder(AppProvider provider) {
+    final basePath = provider.settings?.downloadBasePath;
+    
+    if (basePath == null || basePath.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('다운로드 경로가 설정되지 않았습니다')),
+      );
+      return;
+    }
+
+    String folderPath = basePath;
+    
+    // 거래처 하위 폴더 사용 설정이 켜져 있고, 선택된 거래처가 있으면 해당 폴더로 이동
+    if (provider.settings?.useClientSubfolders == true && 
+        provider.selectedClient != null) {
+      final clientName = provider.selectedClient!.name
+          .replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+      final year = provider.selectedYear;
+      folderPath = '$basePath\\$clientName\\$year';
+    }
+
+    // 폴더 존재 여부 확인
+    final directory = Directory(folderPath);
+    if (!directory.existsSync()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('폴더가 존재하지 않습니다: $folderPath')),
+      );
+      return;
+    }
+
+    // Windows: explorer로 폴더 열기
+    if (Platform.isWindows) {
+      Process.run('explorer', [folderPath]).then((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('폴더를 열었습니다'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }).catchError((e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('폴더 열기 실패: $e')),
+        );
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Windows에서만 지원됩니다')),
+      );
     }
   }
 }

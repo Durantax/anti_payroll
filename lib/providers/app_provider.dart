@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../core/models.dart';
 import '../core/constants.dart';
 import '../services/api_service.dart';
 import '../services/payroll_calculator.dart';
 import '../services/file_email_service.dart';
+import '../utils/path_helper.dart';
 
 class AppProvider with ChangeNotifier {
   final ApiService _apiService;
@@ -735,21 +737,59 @@ class AppProvider with ChangeNotifier {
 
     try {
       _setLoading(true);
-      // 마감된 직원의 PDF만 생성
-      for (var entry in _salaryResults.entries) {
+      
+      // 마감된 직원 목록
+      final finalizedWorkers = _salaryResults.entries
+          .where((entry) => isWorkerFinalized(entry.key))
+          .toList();
+      
+      if (finalizedWorkers.isEmpty) {
+        _setError('마감된 직원이 없습니다.');
+        return;
+      }
+      
+      int successCount = 0;
+      int totalCount = finalizedWorkers.length;
+      
+      // 기본 경로 사용 (설정되어 있으면)
+      final basePath = _settings?.downloadBasePath ?? '';
+      final useSubfolders = _settings?.useClientSubfolders ?? true;
+      
+      for (var i = 0; i < finalizedWorkers.length; i++) {
+        final entry = finalizedWorkers[i];
         final workerId = entry.key;
         final result = entry.value;
         
-        if (isWorkerFinalized(workerId)) {
+        try {
           await FileEmailService.generatePayslipPdf(
             client: _selectedClient!,
             result: result,
             year: selectedYear,
             month: selectedMonth,
+            customBasePath: basePath.isNotEmpty ? basePath : null,
+            useClientSubfolders: useSubfolders,
           );
+          successCount++;
+          
+          // 진행 상황 업데이트
+          _setError('명세서 생성 중... ($successCount/$totalCount)');
+          notifyListeners();
+        } catch (e) {
+          print('PDF 생성 실패 (${result.workerName}): $e');
         }
       }
-      _setError(null);
+      
+      _setError('명세서 $successCount개 생성 완료!');
+      
+      // 폴더 열기 (Windows)
+      if (basePath.isNotEmpty && Platform.isWindows) {
+        final folderPath = PathHelper.getClientFolderPath(
+          basePath: basePath,
+          clientName: _selectedClient!.name,
+          year: selectedYear,
+        );
+        await Process.run('explorer', [folderPath]);
+      }
     } catch (e) {
       _setError('PDF 일괄 생성 실패: $e');
     } finally {
