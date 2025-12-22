@@ -52,10 +52,12 @@ class AppProvider with ChangeNotifier {
   
   SmtpConfig? get smtpConfig => _smtpConfig;
   AppSettings? get appSettings => _appSettings;
+  AppSettings? get settings => _appSettings;  // Alias for compatibility
   ClientSendStatus? get sendStatus => _sendStatus;
   
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get error => _errorMessage;  // Alias for compatibility
 
   // 급여 총액 계산
   int get totalPayment => _salaryResults.values.fold(0, (sum, r) => sum + r.totalPayment);
@@ -719,8 +721,8 @@ class AppProvider with ChangeNotifier {
       _setLoading(true);
       
       // 자동 경로 사용
-      final basePath = _settings?.downloadBasePath ?? '';
-      final useSubfolders = _settings?.useClientSubfolders ?? true;
+      final basePath = settings?.downloadBasePath ?? '';
+      final useSubfolders = settings?.useClientSubfolders ?? true;
       
       await FileEmailService.generatePayslipPdf(
         client: _selectedClient!,
@@ -759,8 +761,8 @@ class AppProvider with ChangeNotifier {
       int totalCount = finalizedWorkers.length;
       
       // 기본 경로 사용 (설정되어 있으면)
-      final basePath = _settings?.downloadBasePath ?? '';
-      final useSubfolders = _settings?.useClientSubfolders ?? true;
+      final basePath = settings?.downloadBasePath ?? '';
+      final useSubfolders = settings?.useClientSubfolders ?? true;
       
       for (var i = 0; i < finalizedWorkers.length; i++) {
         final entry = finalizedWorkers[i];
@@ -820,8 +822,8 @@ class AppProvider with ChangeNotifier {
       _setLoading(true);
 
       // PDF 생성 (자동 경로 사용)
-      final basePath = _settings?.downloadBasePath ?? '';
-      final useSubfolders = _settings?.useClientSubfolders ?? true;
+      final basePath = settings?.downloadBasePath ?? '';
+      final useSubfolders = settings?.useClientSubfolders ?? true;
       
       final pdfFile = await FileEmailService.generatePayslipPdf(
         client: _selectedClient!,
