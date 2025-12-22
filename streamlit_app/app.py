@@ -24,35 +24,167 @@ from payroll_calculator import PayrollCalculator
 from pdf_generator import generate_payslip_pdf, generate_batch_pdfs
 from email_service import EmailService
 
-# CSS 스타일
+# CSS 스타일 (Flutter UI 스타일)
 st.markdown("""
 <style>
+    /* 전체 레이아웃 */
+    .main {
+        background-color: #f5f7fa;
+    }
+    
+    /* 헤더 */
     .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1f77b4;
-        margin-bottom: 1rem;
+        font-size: 2rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+        padding: 1rem 0;
+        border-bottom: 2px solid #3498db;
     }
+    
+    /* 카드 스타일 */
     .metric-card {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin: 0.5rem 0;
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin: 1rem 0;
+        border-left: 4px solid #3498db;
     }
+    
+    /* 직원 카드 */
+    .employee-card {
+        background: white;
+        padding: 1.2rem;
+        border-radius: 10px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        margin: 0.8rem 0;
+        border-left: 3px solid #2ecc71;
+        transition: all 0.2s;
+    }
+    
+    .employee-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    
+    /* 급여 결과 카드 */
+    .salary-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin: 0.8rem 0;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* 테이블 스타일 */
+    .dataframe {
+        border-radius: 8px !important;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .dataframe thead tr {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white !important;
+    }
+    
+    .dataframe tbody tr:nth-child(even) {
+        background-color: #f8f9fa;
+    }
+    
+    .dataframe tbody tr:hover {
+        background-color: #e3f2fd;
+    }
+    
+    /* 버튼 스타일 */
+    .stButton > button {
+        border-radius: 8px;
+        padding: 0.6rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s;
+        border: none;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    
+    /* 성공/오류 메시지 */
     .success-message {
-        padding: 1rem;
-        background-color: #d4edda;
-        border-left: 4px solid #28a745;
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
         margin: 1rem 0;
+        box-shadow: 0 2px 8px rgba(17, 153, 142, 0.3);
     }
+    
     .error-message {
-        padding: 1rem;
-        background-color: #f8d7da;
-        border-left: 4px solid #dc3545;
+        background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
         margin: 1rem 0;
+        box-shadow: 0 2px 8px rgba(238, 9, 121, 0.3);
     }
-    .stProgress .st-bo {
-        background-color: #1f77b4;
+    
+    /* 탭 스타일 */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: white;
+        padding: 0.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px;
+        padding: 0.8rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    /* 입력 필드 */
+    .stTextInput > div > div > input,
+    .stNumberInput > div > div > input,
+    .stSelectbox > div > div > select {
+        border-radius: 8px;
+        border: 2px solid #e0e6ed;
+        padding: 0.6rem 1rem;
+        transition: all 0.2s;
+    }
+    
+    .stTextInput > div > div > input:focus,
+    .stNumberInput > div > div > input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    /* 프로그레스 바 */
+    .stProgress > div > div > div {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+    }
+    
+    /* 사이드바 */
+    .css-1d391kg {
+        background-color: #2c3e50;
+    }
+    
+    /* 확장 가능한 섹션 */
+    .streamlit-expanderHeader {
+        background-color: white;
+        border-radius: 8px;
+        font-weight: 500;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -86,10 +218,11 @@ if 'smtp_settings' not in st.session_state:
     }
 if 'email_templates' not in st.session_state:
     st.session_state.email_templates = {
-        'subject': '{year}년 {month}월 급여명세서 - {name}',
+        'subject': '{year}년 {month}월 급여명세서 - {name}님',
         'body': '''안녕하세요, {name}님
 
-{year}년 {month}월 급여명세서를 첨부하여 보내드립니다.
+{client} 사업장의 {year}년 {month}월 급여명세서를 첨부하여 보내드립니다.
+
 확인 후 문의사항이 있으시면 연락 주시기 바랍니다.
 
 감사합니다.
@@ -388,8 +521,8 @@ def main():
 
 
 def show_payroll_calculation(workers, selected_client):
-    """급여 계산 탭"""
-    st.header("📊 급여 계산 결과")
+    """급여 계산 탭 (Flutter UI 스타일)"""
+    st.markdown('<div class="main-header">📊 급여 계산 결과</div>', unsafe_allow_html=True)
     
     # 급여 계산
     client_has_5_or_more = selected_client['Has5OrMoreWorkers']
@@ -397,84 +530,130 @@ def show_payroll_calculation(workers, selected_client):
     
     if not salary_results:
         st.warning("⚠️ 계산 가능한 급여 데이터가 없습니다.")
+        st.info("💡 '월별 데이터 입력' 탭에서 근무 시간을 입력하세요.")
         return
     
-    # 요약 정보
+    # 요약 카드 (큰 카드 스타일)
+    st.markdown("### 💼 급여 요약")
     total_payment = sum(r['total_payment'] for r in salary_results)
     total_deduction = sum(r['total_deduction'] for r in salary_results)
     total_net = sum(r['net_payment'] for r in salary_results)
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("지급총액", f"{format_money(total_payment)}원")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="color: #7f8c8d; font-size: 0.9rem; margin-bottom: 0.5rem;">직원 수</div>
+            <div style="font-size: 2rem; font-weight: 600; color: #2c3e50;">{len(salary_results)}명</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
     with col2:
-        st.metric("공제총액", f"{format_money(total_deduction)}원", 
-                 delta=f"-{format_money(total_deduction)}원", delta_color="inverse")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="color: #7f8c8d; font-size: 0.9rem; margin-bottom: 0.5rem;">💰 지급총액</div>
+            <div style="font-size: 1.8rem; font-weight: 600; color: #27ae60;">{format_money(total_payment)}원</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
     with col3:
-        st.metric("실수령액", f"{format_money(total_net)}원")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="color: #7f8c8d; font-size: 0.9rem; margin-bottom: 0.5rem;">➖ 공제총액</div>
+            <div style="font-size: 1.8rem; font-weight: 600; color: #e74c3c;">-{format_money(total_deduction)}원</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown(f"""
+        <div class="metric-card" style="border-left: 4px solid #3498db;">
+            <div style="color: #7f8c8d; font-size: 0.9rem; margin-bottom: 0.5rem;">✅ 실수령액</div>
+            <div style="font-size: 1.8rem; font-weight: 600; color: #3498db;">{format_money(total_net)}원</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     st.divider()
     
-    # 직원별 상세 결과
+    # 직원별 카드 리스트
+    st.markdown("### 👥 직원별 급여 내역")
+    
     for idx, result in enumerate(salary_results):
-        with st.expander(f"👤 {result['worker_name']} - 실수령액: {format_money(result['net_payment'])}원"):
+        # 직원 카드
+        st.markdown(f"""
+        <div class="employee-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex: 1;">
+                    <div style="font-size: 1.2rem; font-weight: 600; color: #2c3e50; margin-bottom: 0.3rem;">
+                        👤 {result['worker_name']}
+                    </div>
+                    <div style="color: #7f8c8d; font-size: 0.9rem;">
+                        {result['birth_date']} | {result['employment_type']}
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="color: #7f8c8d; font-size: 0.85rem;">실수령액</div>
+                    <div style="font-size: 1.5rem; font-weight: 600; color: #3498db;">
+                        {format_money(result['net_payment'])}원
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 확장 가능한 상세 내역
+        with st.expander(f"📋 {result['worker_name']} 상세 내역 보기"):
             
-            # 기본 정보
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
+            
             with col1:
-                st.write(f"**통상시급:** {format_money(result['hourly_rate'])}원")
+                # 지급 항목
+                st.markdown("#### 💰 지급 항목")
+                pay_data = {
+                    '기본급': result['base_salary'],
+                    '연장수당': result['overtime_pay'],
+                    '야간수당': result['night_pay'],
+                    '휴일수당': result['holiday_pay'],
+                    '주휴수당': result['weekly_holiday_pay'],
+                    '상여금': result['bonus'],
+                    '식대': result['food_allowance'],
+                    '차량유지비': result['car_allowance'],
+                }
+                
+                pay_df = pd.DataFrame([
+                    {'항목': k, '금액': f"{format_money(v):>12}원"} 
+                    for k, v in pay_data.items() if v > 0
+                ])
+                
+                if not pay_df.empty:
+                    st.dataframe(pay_df, use_container_width=True, hide_index=True)
+                
+                st.markdown(f"**총 지급액: `{format_money(result['total_payment'])}원`**")
+            
             with col2:
-                st.write(f"**고용형태:** {result['employment_type']}")
-            with col3:
-                st.write(f"**생년월일:** {result['birth_date']}")
+                # 공제 항목
+                st.markdown("#### ➖ 공제 항목")
+                deduct_data = {
+                    '국민연금': result['national_pension'],
+                    '건강보험': result['health_insurance'],
+                    '장기요양': result['long_term_care'],
+                    '고용보험': result['employment_insurance'],
+                    '소득세': result['income_tax'],
+                    '지방소득세': result['local_income_tax'],
+                }
+                
+                deduct_df = pd.DataFrame([
+                    {'항목': k, '금액': f"{format_money(v):>12}원"} 
+                    for k, v in deduct_data.items() if v > 0
+                ])
+                
+                if not deduct_df.empty:
+                    st.dataframe(deduct_df, use_container_width=True, hide_index=True)
+                
+                st.markdown(f"**총 공제액: `{format_money(result['total_deduction'])}원`**")
             
-            # 지급 항목
-            st.subheader("💰 지급 항목")
-            pay_data = {
-                '기본급': result['base_salary'],
-                '연장수당': result['overtime_pay'],
-                '야간수당': result['night_pay'],
-                '휴일수당': result['holiday_pay'],
-                '주휴수당': result['weekly_holiday_pay'],
-                '상여금': result['bonus'],
-                '식대': result['food_allowance'],
-                '차량유지비': result['car_allowance'],
-            }
-            
-            pay_df = pd.DataFrame([
-                {'항목': k, '금액': f"{format_money(v)}원"} 
-                for k, v in pay_data.items() if v > 0
-            ])
-            
-            if not pay_df.empty:
-                st.dataframe(pay_df, use_container_width=True, hide_index=True)
-            
-            st.write(f"**지급총액:** {format_money(result['total_payment'])}원")
-            
-            # 공제 항목
-            st.subheader("➖ 공제 항목")
-            deduct_data = {
-                '국민연금': result['national_pension'],
-                '건강보험': result['health_insurance'],
-                '장기요양': result['long_term_care'],
-                '고용보험': result['employment_insurance'],
-                '소득세': result['income_tax'],
-                '지방소득세': result['local_income_tax'],
-            }
-            
-            deduct_df = pd.DataFrame([
-                {'항목': k, '금액': f"{format_money(v)}원"} 
-                for k, v in deduct_data.items() if v > 0
-            ])
-            
-            if not deduct_df.empty:
-                st.dataframe(deduct_df, use_container_width=True, hide_index=True)
-            
-            st.write(f"**공제총액:** {format_money(result['total_deduction'])}원")
-            
-            # 실수령액
-            st.subheader("✅ 실수령액")
-            st.success(f"### {format_money(result['net_payment'])}원")
+            # 실수령액 (강조)
+            st.markdown("---")
+            st.success(f"### ✅ 실수령액: **{format_money(result['net_payment'])}원**")
 
 
 def show_monthly_data_input(workers, selected_client):
@@ -1429,22 +1608,37 @@ def show_settings():
     st.divider()
     
     # 이메일 템플릿
-    st.subheader("✉️ 이메일 템플릿")
+    st.subheader("✉️ 이메일 템플릿 (모든 거래처 공통)")
     
-    st.info("사용 가능한 변수: {year}, {month}, {name}, {client}")
+    st.info("""
+    **사용 가능한 변수:**
+    - `{year}`: 급여 연도 (예: 2025)
+    - `{month}`: 급여 월 (예: 12)
+    - `{name}`: 직원 이름 (예: 홍길동)
+    - `{client}`: 거래처 이름 (예: 사업1)
+    
+    💡 **SMTP 설정은 하나로 모든 거래처의 이메일을 발송합니다.**
+    """)
     
     templates = st.session_state.email_templates
     
-    email_subject = st.text_input("제목 템플릿", value=templates['subject'])
-    email_body = st.text_area("본문 템플릿", value=templates['body'], height=200)
+    email_subject = st.text_input("제목 템플릿", value=templates['subject'], 
+                                   placeholder="예: {year}년 {month}월 급여명세서 - {name}님")
+    email_body = st.text_area("본문 템플릿", value=templates['body'], height=250,
+                               placeholder="예: 안녕하세요, {name}님\n\n{client} 사업장의 {year}년 {month}월 급여명세서를 첨부합니다...")
     
-    if st.button("💾 템플릿 저장"):
-        st.session_state.email_templates = {
-            'subject': email_subject,
-            'body': email_body
-        }
-        st.success("✅ 이메일 템플릿이 저장되었습니다!")
-        st.rerun()
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        if st.button("💾 템플릿 저장", use_container_width=True):
+            st.session_state.email_templates = {
+                'subject': email_subject,
+                'body': email_body
+            }
+            st.success("✅ 이메일 템플릿이 저장되었습니다!")
+            st.rerun()
+    
+    with col2:
+        st.caption("💡 템플릿 변경 시 즉시 모든 거래처에 적용됩니다.")
     
     st.divider()
     
