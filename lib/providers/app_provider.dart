@@ -652,11 +652,19 @@ class AppProvider with ChangeNotifier {
 
     try {
       _setLoading(true);
+      
+      final basePath = settings?.downloadBasePath ?? PathHelper.getDefaultDownloadPath();
+      final useSubfolders = settings?.useClientSubfolders ?? true;
+      
       // 현재 거래처의 직원 목록을 템플릿에 포함
       await FileEmailService.generateExcelTemplate(
         _selectedClient!.name,
         bizId: _selectedClient!.bizId,
         workers: currentWorkers,
+        basePath: basePath,
+        useClientSubfolders: useSubfolders,
+        year: selectedYear,
+        month: selectedMonth,
       );
       _setError(null);
     } catch (e) {

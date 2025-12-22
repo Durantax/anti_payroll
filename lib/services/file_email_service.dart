@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' hide Border;
 import 'package:csv/csv.dart';
@@ -20,6 +21,10 @@ class FileEmailService {
     String clientName, {
     String? bizId,
     List<WorkerModel>? workers,
+    required String basePath,
+    bool useClientSubfolders = true,
+    required int year,
+    required int month,
   }) async {
     final excel = Excel.createExcel();
     
@@ -96,18 +101,24 @@ class FileEmailService {
 
     final bytes = excel.encode();
     
-    // 사용자가 저장 위치 선택
-    final fileName = '${clientName}_급여대장_템플릿.xlsx';
-    final outputPath = await FilePicker.platform.saveFile(
-      dialogTitle: '템플릿 저장',
-      fileName: fileName,
-      type: FileType.custom,
-      allowedExtensions: ['xlsx'],
-    );
-
-    if (outputPath == null) {
-      throw Exception('파일 저장이 취소되었습니다.');
+    // 자동 저장 경로 생성
+    String folderPath;
+    if (useClientSubfolders) {
+      folderPath = PathHelper.getClientFolderPath(
+        basePath: basePath,
+        clientName: clientName,
+        year: year,
+        month: month,
+      );
+    } else {
+      folderPath = basePath;
     }
+    
+    // 폴더가 없으면 생성
+    await PathHelper.ensureDirectoryExists(folderPath);
+    
+    final fileName = '${clientName}_${year}년${month.toString().padLeft(2, '0')}월_급여대장_템플릿.xlsx';
+    final outputPath = path.join(folderPath, fileName);
 
     final file = File(outputPath);
     await file.writeAsBytes(bytes!);

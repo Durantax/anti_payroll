@@ -428,17 +428,15 @@ class _MainScreenContentState extends State<MainScreenContent> {
                 label: const Text('일괄발송'),
               ),
               const SizedBox(width: 8),
-              // 폴더 열기 버튼 (설정된 경로가 있을 때만 표시)
-              if (provider.settings?.downloadBasePath != null && 
-                  provider.settings!.downloadBasePath.isNotEmpty)
-                ElevatedButton.icon(
-                  onPressed: () => _openDownloadFolder(provider),
-                  icon: const Icon(Icons.folder_open),
-                  label: const Text('폴더 열기'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green.shade600,
-                  ),
+              // 폴더 열기 버튼 (항상 표시, 기본 경로 사용)
+              ElevatedButton.icon(
+                onPressed: () => _openDownloadFolder(provider),
+                icon: const Icon(Icons.folder_open),
+                label: const Text('폴더 열기'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.shade600,
                 ),
+              ),
             ],
           ),
         ],
@@ -769,19 +767,13 @@ class _MainScreenContentState extends State<MainScreenContent> {
 
   /// 다운로드 폴더 열기 (Windows 전용)
   void _openDownloadFolder(AppProvider provider) {
-    final basePath = provider.settings?.downloadBasePath;
-    
-    if (basePath == null || basePath.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('다운로드 경로가 설정되지 않았습니다')),
-      );
-      return;
-    }
+    // 설정된 경로가 없으면 기본 경로 사용
+    final basePath = provider.settings?.downloadBasePath ?? PathHelper.getDefaultDownloadPath();
 
     String folderPath = basePath;
     
     // 거래처 하위 폴더 사용 설정이 켜져 있고, 선택된 거래처가 있으면 해당 폴더로 이동
-    if (provider.settings?.useClientSubfolders == true && 
+    if ((provider.settings?.useClientSubfolders ?? true) && 
         provider.selectedClient != null) {
       folderPath = PathHelper.getClientFolderPath(
         basePath: basePath,
