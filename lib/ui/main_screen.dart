@@ -350,6 +350,11 @@ class _MainScreenContentState extends State<MainScreenContent> {
                       tooltip: '명세서 조회',
                     ),
                     IconButton(
+                      icon: const Icon(Icons.web, size: 20, color: Colors.green),
+                      onPressed: result != null ? () => _viewPayslipWithAuth(worker, result) : null,
+                      tooltip: 'HTML 명세서 (본인인증)',
+                    ),
+                    IconButton(
                       icon: const Icon(Icons.picture_as_pdf, size: 20),
                       onPressed: result != null ? () => _generatePdf(worker.id!) : null,
                       tooltip: 'PDF 생성',
@@ -630,6 +635,27 @@ class _MainScreenContentState extends State<MainScreenContent> {
           month: provider.selectedMonth,
           clientName: provider.selectedClient!.name,
           bizId: provider.selectedClient!.bizId,
+          requireBirthdateAuth: false,
+        ),
+      ),
+    );
+  }
+
+  void _viewPayslipWithAuth(WorkerModel worker, SalaryResult result) {
+    final provider = context.read<AppProvider>();
+    final monthlyData = provider.getMonthlyData(worker.id!);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PayslipViewScreen(
+          worker: worker,
+          salaryResult: result,
+          monthlyData: monthlyData,
+          year: provider.selectedYear,
+          month: provider.selectedMonth,
+          clientName: provider.selectedClient!.name,
+          bizId: provider.selectedClient!.bizId,
+          requireBirthdateAuth: true,
         ),
       ),
     );
