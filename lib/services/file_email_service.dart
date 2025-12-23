@@ -21,6 +21,8 @@ class FileEmailService {
   static Future<File> generateExcelTemplate(
     String clientName, {
     String? bizId,
+    List<WorkerModel>? workers,
+    Map<int, MonthlyData>? monthlyDataMap,
     required String basePath,
     bool useClientSubfolders = true,
     required int year,
@@ -47,7 +49,7 @@ class FileEmailService {
     sheet.cell(CellIndex.indexByString('B3')).value = TextCellValue('월급제: 월급란에 금액 입력 (시급란은 0 또는 빈칸)');
     sheet.cell(CellIndex.indexByString('G3')).value = TextCellValue('시급제: 시급란에 금액 입력 (월급란은 0 또는 빈칸)');
 
-    // 헤더 (4행) - 기본 정보만
+    // 헤더 (4행)
     final headers = [
       '이름',
       '생년월일(YYMMDD)',
@@ -74,8 +76,39 @@ class FileEmailService {
           .value = TextCellValue(headers[i]);
     }
 
-    // 직원 데이터는 사용자가 직접 입력하도록 빈 템플릿 제공
-    // (매달 변경되는 값들은 DB에서 가져오지 않음)
+    // 직원 기본 정보 자동 입력 (이름, 생년월일, 입사일, 퇴사일, 월급, 시급, 주소정근로시간)
+    // 정상근로시간부터는 매달 변경되므로 사용자가 직접 입력
+    if (workers != null && workers.isNotEmpty) {
+      for (var i = 0; i < workers.length; i++) {
+        final worker = workers[i];
+        final rowIndex = 4 + i; // 5행부터 시작
+        
+        // 해당 직원의 월별 데이터 가져오기 (주소정근로시간용)
+        final monthlyData = monthlyDataMap != null && worker.id != null 
+            ? monthlyDataMap[worker.id!] 
+            : null;
+        
+        // 기본 정보만 입력 (컬럼 0~6)
+        final basicInfo = [
+          worker.name,                                                    // 0: 이름
+          worker.birthDate,                                               // 1: 생년월일
+          worker.joinDate ?? '',                                          // 2: 입사일
+          worker.resignDate ?? '',                                        // 3: 퇴사일
+          worker.monthlySalary.toString(),                               // 4: 월급
+          worker.hourlyRate.toString(),                                  // 5: 시급
+          monthlyData?.weeklyHours.toStringAsFixed(0) ?? '40',          // 6: 주소정근로시간
+        ];
+        
+        // 기본 정보만 입력
+        for (var j = 0; j < basicInfo.length; j++) {
+          sheet
+              .cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: rowIndex))
+              .value = TextCellValue(basicInfo[j]);
+        }
+        
+        // 7번 컬럼(정상근로시간)부터는 빈칸으로 둠 (사용자가 직접 입력)
+      }
+    }
 
     final bytes = excel.encode();
     

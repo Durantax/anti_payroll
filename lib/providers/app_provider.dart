@@ -686,10 +686,13 @@ class AppProvider with ChangeNotifier {
       final basePath = _getValidBasePath();
       final useSubfolders = settings?.useClientSubfolders ?? true;
       
-      // 빈 템플릿 생성 (사용자가 직접 입력)
+      // 직원 기본 정보(이름~주소정근로시간)는 DB에서 자동 입력
+      // 정상근로시간부터는 사용자가 매달 직접 입력
       await FileEmailService.generateExcelTemplate(
         _selectedClient!.name,
         bizId: _selectedClient!.bizId,
+        workers: currentWorkers,
+        monthlyDataMap: currentMonthlyDataMap,
         basePath: basePath,
         useClientSubfolders: useSubfolders,
         year: selectedYear,
