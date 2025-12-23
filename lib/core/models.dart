@@ -70,6 +70,7 @@ class WorkerModel {
   final int clientId;
   final String name;
   final String birthDate; // YYMMDD
+  final String? resignDate; // YYYY-MM-DD (퇴사일)
   final String phoneNumber;
   final String email;
   final String employmentType; // 'regular' or 'freelance'
@@ -103,6 +104,7 @@ class WorkerModel {
     required this.clientId,
     required this.name,
     required this.birthDate,
+    this.resignDate,
     this.phoneNumber = '',
     this.email = '',
     this.employmentType = 'regular',
@@ -134,6 +136,7 @@ class WorkerModel {
       clientId: json['clientId'] as int,
       name: json['name'] as String? ?? '',
       birthDate: json['birthDate'] as String? ?? '',
+      resignDate: json['resignDate'] as String?,
       phoneNumber: json['phoneNumber'] as String? ?? '',
       email: json['email'] as String? ?? '',
       employmentType: json['employmentType'] as String? ?? 'regular',
@@ -272,6 +275,7 @@ class MonthlyData {
   final double weeklyHours; // 주소정근로시간
   final int weekCount; // 개근주수
   final int bonus;
+  final bool isDurunuri; // 두루누리 지원 여부
   
   // 추가 수당/공제 (과세/비과세 구분 가능)
   final int additionalPay1;
@@ -301,6 +305,7 @@ class MonthlyData {
     this.weeklyHours = 40,
     this.weekCount = 4,
     this.bonus = 0,
+    this.isDurunuri = false,
     this.additionalPay1 = 0,
     this.additionalPay1Name = '',
     this.additionalPay1IsTaxFree = false,
