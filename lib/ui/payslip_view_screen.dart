@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../core/models.dart';
+import '../providers/app_provider.dart';
 
 class PayslipViewScreen extends StatefulWidget {
   final WorkerModel worker;
@@ -10,6 +12,7 @@ class PayslipViewScreen extends StatefulWidget {
   final int month;
   final String clientName;
   final String bizId;
+  final int clientId;
   final bool requireBirthdateAuth;
 
   const PayslipViewScreen({
@@ -21,6 +24,7 @@ class PayslipViewScreen extends StatefulWidget {
     required this.month,
     required this.clientName,
     required this.bizId,
+    required this.clientId,
     this.requireBirthdateAuth = false,
   }) : super(key: key);
 
@@ -31,16 +35,122 @@ class PayslipViewScreen extends StatefulWidget {
 class _PayslipViewScreenState extends State<PayslipViewScreen> {
   bool _isAuthenticated = false;
   bool _isHtmlView = false;
+  bool _isEditMode = false;
+  
+  // 편집 가능한 값들
+  late int _editBaseSalary;
+  late int _editOvertimePay;
+  late int _editNightPay;
+  late int _editHolidayPay;
+  late int _editWeeklyHolidayPay;
+  late int _editBonus;
+  late int _editNationalPension;
+  late int _editHealthInsurance;
+  late int _editLongTermCare;
+  late int _editEmploymentInsurance;
+  late int _editIncomeTax;
+  late int _editLocalIncomeTax;
 
   @override
   void initState() {
     super.initState();
     _isAuthenticated = !widget.requireBirthdateAuth;
     
+    // 초기값 설정
+    _initEditValues();
+    
     if (widget.requireBirthdateAuth) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showBirthdateAuthDialog();
       });
+    }
+  }
+
+  void _initEditValues() {
+    _editBaseSalary = widget.salaryResult.baseSalary;
+    _editOvertimePay = widget.salaryResult.overtimePay;
+    _editNightPay = widget.salaryResult.nightPay;
+    _editHolidayPay = widget.salaryResult.holidayPay;
+    _editWeeklyHolidayPay = widget.salaryResult.weeklyHolidayPay;
+    _editBonus = widget.salaryResult.bonus;
+    _editNationalPension = widget.salaryResult.nationalPension;
+    _editHealthInsurance = widget.salaryResult.healthInsurance;
+    _editLongTermCare = widget.salaryResult.longTermCare;
+    _editEmploymentInsurance = widget.salaryResult.employmentInsurance;
+    _editIncomeTax = widget.salaryResult.incomeTax;
+    _editLocalIncomeTax = widget.salaryResult.localIncomeTax;
+  }
+
+  int get _editTotalPayment => _editBaseSalary + _editOvertimePay + _editNightPay + 
+      _editHolidayPay + _editWeeklyHolidayPay + _editBonus;
+  
+  int get _editTotalDeduction => _editNationalPension + _editHealthInsurance + 
+      _editLongTermCare + _editEmploymentInsurance + _editIncomeTax + _editLocalIncomeTax;
+  
+  int get _editNetPayment => _editTotalPayment - _editTotalDeduction;
+
+  Future<void> _saveChanges() async {
+    try {
+      final provider = Provider.of<AppProvider>(context, listen: false);
+      
+      // 명세서 수정 데이터 저장
+      await provider.apiService.savePayrollResult(
+        employeeId: widget.worker.id!,
+        clientId: widget.clientId,
+        year: widget.year,
+        month: widget.month,
+        salaryData: {
+          'baseSalary': _editBaseSalary,
+          'overtimePay': _editOvertimePay,
+          'nightPay': _editNightPay,
+          'holidayPay': _editHolidayPay,
+          'weeklyHolidayPay': _editWeeklyHolidayPay,
+          'bonus': _editBonus,
+          'totalPayment': _editTotalPayment,
+          'nationalPension': _editNationalPension,
+          'healthInsurance': _editHealthInsurance,
+          'longTermCare': _editLongTermCare,
+          'employmentInsurance': _editEmploymentInsurance,
+          'incomeTax': _editIncomeTax,
+          'localIncomeTax': _editLocalIncomeTax,
+          'totalDeduction': _editTotalDeduction,
+          'netPayment': _editNetPayment,
+        },
+        calculatedBy: 'manual', // 수동 수정으로 표시
+      );
+      
+      // 수정된 데이터로 widget.salaryResult를 업데이트
+      // (읽기 전용이므로 실제로는 화면을 다시 로드해야 함)
+      
+      setState(() {
+        _isEditMode = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('명세서가 수정되었습니다'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        
+        // 데이터 다시 로드
+        await provider.loadWorkerSalaries(
+          provider.selectedClient!.id!,
+          provider.selectedYear,
+          provider.selectedMonth,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('저장 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -144,6 +254,32 @@ class _PayslipViewScreenState extends State<PayslipViewScreen> {
             },
           ),
           const SizedBox(width: 16),
+          // 편집 버튼
+          IconButton(
+            icon: Icon(_isEditMode ? Icons.check : Icons.edit),
+            onPressed: () {
+              if (_isEditMode) {
+                // 저장 로직
+                _saveChanges();
+              } else {
+                setState(() {
+                  _isEditMode = true;
+                });
+              }
+            },
+            tooltip: _isEditMode ? '저장' : '수정',
+          ),
+          if (_isEditMode)
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () {
+                setState(() {
+                  _isEditMode = false;
+                  _initEditValues(); // 원래 값으로 되돌리기
+                });
+              },
+              tooltip: '취소',
+            ),
           IconButton(
             icon: const Icon(Icons.print),
             onPressed: () {
@@ -256,19 +392,19 @@ class _PayslipViewScreenState extends State<PayslipViewScreen> {
                   context,
                   '지급 항목',
                   [
-                    _AmountRow('기본급', widget.salaryResult.baseSalary, widget.salaryResult.baseSalaryFormula),
-                    if (widget.salaryResult.overtimePay > 0)
-                      _AmountRow('연장수당', widget.salaryResult.overtimePay, widget.salaryResult.overtimeFormula),
-                    if (widget.salaryResult.nightPay > 0)
-                      _AmountRow('야간수당', widget.salaryResult.nightPay, widget.salaryResult.nightFormula),
-                    if (widget.salaryResult.holidayPay > 0)
-                      _AmountRow('휴일수당', widget.salaryResult.holidayPay, widget.salaryResult.holidayFormula),
-                    if (widget.salaryResult.weeklyHolidayPay > 0)
-                      _AmountRow('주휴수당', widget.salaryResult.weeklyHolidayPay, widget.salaryResult.weeklyHolidayFormula),
-                    if (widget.salaryResult.bonus > 0)
-                      _AmountRow('상여금', widget.salaryResult.bonus, ''),
+                    _EditableAmountRow('기본급', _isEditMode, _editBaseSalary, widget.salaryResult.baseSalaryFormula, (v) => setState(() => _editBaseSalary = v)),
+                    if (!_isEditMode && widget.salaryResult.overtimePay > 0 || _isEditMode)
+                      _EditableAmountRow('연장수당', _isEditMode, _editOvertimePay, widget.salaryResult.overtimeFormula, (v) => setState(() => _editOvertimePay = v)),
+                    if (!_isEditMode && widget.salaryResult.nightPay > 0 || _isEditMode)
+                      _EditableAmountRow('야간수당', _isEditMode, _editNightPay, widget.salaryResult.nightFormula, (v) => setState(() => _editNightPay = v)),
+                    if (!_isEditMode && widget.salaryResult.holidayPay > 0 || _isEditMode)
+                      _EditableAmountRow('휴일수당', _isEditMode, _editHolidayPay, widget.salaryResult.holidayFormula, (v) => setState(() => _editHolidayPay = v)),
+                    if (!_isEditMode && widget.salaryResult.weeklyHolidayPay > 0 || _isEditMode)
+                      _EditableAmountRow('주휴수당', _isEditMode, _editWeeklyHolidayPay, widget.salaryResult.weeklyHolidayFormula, (v) => setState(() => _editWeeklyHolidayPay = v)),
+                    if (!_isEditMode && widget.salaryResult.bonus > 0 || _isEditMode)
+                      _EditableAmountRow('상여금', _isEditMode, _editBonus, '', (v) => setState(() => _editBonus = v)),
                   ],
-                  widget.salaryResult.totalPayment,
+                  _isEditMode ? _editTotalPayment : widget.salaryResult.totalPayment,
                   Colors.blue,
                 ),
                 const SizedBox(height: 24),
@@ -278,20 +414,20 @@ class _PayslipViewScreenState extends State<PayslipViewScreen> {
                   context,
                   '공제 항목',
                   [
-                    if (widget.salaryResult.nationalPension > 0)
-                      _AmountRow('국민연금', widget.salaryResult.nationalPension, widget.salaryResult.pensionFormula),
-                    if (widget.salaryResult.healthInsurance > 0)
-                      _AmountRow('건강보험', widget.salaryResult.healthInsurance, widget.salaryResult.healthFormula),
-                    if (widget.salaryResult.longTermCare > 0)
-                      _AmountRow('장기요양', widget.salaryResult.longTermCare, widget.salaryResult.longTermCareFormula),
-                    if (widget.salaryResult.employmentInsurance > 0)
-                      _AmountRow('고용보험', widget.salaryResult.employmentInsurance, widget.salaryResult.employmentFormula),
-                    if (widget.salaryResult.incomeTax > 0)
-                      _AmountRow('소득세', widget.salaryResult.incomeTax, widget.salaryResult.incomeTaxFormula),
-                    if (widget.salaryResult.localIncomeTax > 0)
-                      _AmountRow('지방소득세', widget.salaryResult.localIncomeTax, widget.salaryResult.localTaxFormula),
+                    if (!_isEditMode && widget.salaryResult.nationalPension > 0 || _isEditMode)
+                      _EditableAmountRow('국민연금', _isEditMode, _editNationalPension, widget.salaryResult.pensionFormula, (v) => setState(() => _editNationalPension = v)),
+                    if (!_isEditMode && widget.salaryResult.healthInsurance > 0 || _isEditMode)
+                      _EditableAmountRow('건강보험', _isEditMode, _editHealthInsurance, widget.salaryResult.healthFormula, (v) => setState(() => _editHealthInsurance = v)),
+                    if (!_isEditMode && widget.salaryResult.longTermCare > 0 || _isEditMode)
+                      _EditableAmountRow('장기요양', _isEditMode, _editLongTermCare, widget.salaryResult.longTermCareFormula, (v) => setState(() => _editLongTermCare = v)),
+                    if (!_isEditMode && widget.salaryResult.employmentInsurance > 0 || _isEditMode)
+                      _EditableAmountRow('고용보험', _isEditMode, _editEmploymentInsurance, widget.salaryResult.employmentFormula, (v) => setState(() => _editEmploymentInsurance = v)),
+                    if (!_isEditMode && widget.salaryResult.incomeTax > 0 || _isEditMode)
+                      _EditableAmountRow('소득세', _isEditMode, _editIncomeTax, widget.salaryResult.incomeTaxFormula, (v) => setState(() => _editIncomeTax = v)),
+                    if (!_isEditMode && widget.salaryResult.localIncomeTax > 0 || _isEditMode)
+                      _EditableAmountRow('지방소득세', _isEditMode, _editLocalIncomeTax, widget.salaryResult.localTaxFormula, (v) => setState(() => _editLocalIncomeTax = v)),
                   ],
-                  widget.salaryResult.totalDeduction,
+                  _isEditMode ? _editTotalDeduction : widget.salaryResult.totalDeduction,
                   Colors.red,
                 ),
                 const SizedBox(height: 32),
@@ -321,7 +457,7 @@ class _PayslipViewScreenState extends State<PayslipViewScreen> {
                             ),
                       ),
                       Text(
-                        '${_formatNumber(widget.salaryResult.netPayment)}원',
+                        '${_formatNumber(_isEditMode ? _editNetPayment : widget.salaryResult.netPayment)}원',
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Colors.green.shade900,
@@ -415,6 +551,7 @@ class _PayslipViewScreenState extends State<PayslipViewScreen> {
               ...rows.asMap().entries.map((entry) {
                 final isLast = entry.key == rows.length - 1;
                 final row = entry.value;
+                final isEditable = row is _EditableAmountRow;
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
@@ -429,13 +566,38 @@ class _PayslipViewScreenState extends State<PayslipViewScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(row.label),
-                          Text(
-                            '${_formatNumber(row.amount)}원',
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
+                          if (isEditable && (row as _EditableAmountRow).isEditMode)
+                            SizedBox(
+                              width: 150,
+                              child: TextFormField(
+                                initialValue: row.amount.toString(),
+                                keyboardType: TextInputType.number,
+                                textAlign: TextAlign.right,
+                                decoration: InputDecoration(
+                                  suffix: const Text('원'),
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 8, 
+                                    vertical: 8,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                                onChanged: (value) {
+                                  final amount = int.tryParse(value.replaceAll(',', '')) ?? 0;
+                                  row.onChanged(amount);
+                                },
+                              ),
+                            )
+                          else
+                            Text(
+                              '${_formatNumber(row.amount)}원',
+                              style: const TextStyle(fontWeight: FontWeight.w500),
+                            ),
                         ],
                       ),
-                      if (row.formula.isNotEmpty)
+                      if (row.formula.isNotEmpty && !(isEditable && (row as _EditableAmountRow).isEditMode))
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
@@ -564,4 +726,17 @@ class _AmountRow {
   final String formula;
 
   _AmountRow(this.label, this.amount, this.formula);
+}
+
+class _EditableAmountRow extends _AmountRow {
+  final bool isEditMode;
+  final ValueChanged<int> onChanged;
+  
+  _EditableAmountRow(
+    String label, 
+    this.isEditMode, 
+    int amount, 
+    String formula,
+    this.onChanged,
+  ) : super(label, amount, formula);
 }
