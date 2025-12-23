@@ -630,6 +630,77 @@ class ClientSendStatus {
 }
 
 // ============================================================================
+// 수당/공제 마스터 모델
+// ============================================================================
+class AllowanceMaster {
+  final int? id;
+  final int clientId;
+  final String name;
+  final bool isTaxFree;
+  final int? defaultAmount;
+
+  AllowanceMaster({
+    this.id,
+    required this.clientId,
+    required this.name,
+    this.isTaxFree = false,
+    this.defaultAmount,
+  });
+
+  factory AllowanceMaster.fromJson(Map<String, dynamic> json) {
+    return AllowanceMaster(
+      id: json['id'] as int?,
+      clientId: json['clientId'] as int,
+      name: json['name'] as String,
+      isTaxFree: json['isTaxFree'] as bool? ?? false,
+      defaultAmount: json['defaultAmount'] as int?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
+      'clientId': clientId,
+      'name': name,
+      'isTaxFree': isTaxFree,
+      if (defaultAmount != null) 'defaultAmount': defaultAmount,
+    };
+  }
+}
+
+class DeductionMaster {
+  final int? id;
+  final int clientId;
+  final String name;
+  final int? defaultAmount;
+
+  DeductionMaster({
+    this.id,
+    required this.clientId,
+    required this.name,
+    this.defaultAmount,
+  });
+
+  factory DeductionMaster.fromJson(Map<String, dynamic> json) {
+    return DeductionMaster(
+      id: json['id'] as int?,
+      clientId: json['clientId'] as int,
+      name: json['name'] as String,
+      defaultAmount: json['defaultAmount'] as int?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
+      'clientId': clientId,
+      'name': name,
+      if (defaultAmount != null) 'defaultAmount': defaultAmount,
+    };
+  }
+}
+
+// ============================================================================
 // 유틸리티
 // ============================================================================
 String formatMoney(num amount) {

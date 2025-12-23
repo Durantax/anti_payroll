@@ -12,12 +12,26 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
       child: Container(
-        width: 600,
+        width: 800,
         height: 700,
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -28,9 +42,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
-            // SMTP 설정만 표시 (파일 경로는 자동)
+            TabBar(
+              controller: _tabController,
+              tabs: const [
+                Tab(text: 'SMTP 설정'),
+                Tab(text: '수당/공제 관리'),
+              ],
+            ),
             Expanded(
-              child: _SmtpSettingsTab(),
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _SmtpSettingsTab(),
+                  _AllowanceDeductionManagementTab(),
+                ],
+              ),
             ),
           ],
         ),
@@ -319,6 +345,613 @@ class _ClientSettingsDialogState extends State<ClientSettingsDialog> {
           SnackBar(content: Text('저장 실패: $e')),
         );
       }
+    }
+  }
+}
+
+// ============================================================================
+// 수당/공제 관리 탭
+// ============================================================================
+class _AllowanceDeductionManagementTab extends StatefulWidget {
+  @override
+  State<_AllowanceDeductionManagementTab> createState() => _AllowanceDeductionManagementTabState();
+}
+
+class _AllowanceDeductionManagementTabState extends State<_AllowanceDeductionManagementTab> {
+  List<AllowanceMaster> _allowances = [];
+  List<DeductionMaster> _deductions = [];
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final provider = context.read<AppProvider>();
+    final selectedClient = provider.selectedClient;
+    
+    if (selectedClient == null) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    
+    try {
+      // TODO: API 호출하여 수당/공제 마스터 데이터 불러오기
+      setState(() {
+        _allowances = [];
+        _deductions = [];
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final selectedClient = provider.selectedClient;
+
+    if (selectedClient == null) {
+      return const Center(
+        child: Text('거래처를 먼저 선택하세요'),
+      );
+    }
+
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.business, color: Colors.blue.shade700),
+                const SizedBox(width: 8),
+                Text(
+                  '현재 거래처: ${selectedClient.name}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildAllowanceSection(selectedClient.id),
+          const SizedBox(height: 32),
+          _buildDeductionSection(selectedClient.id),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAllowanceSection(int clientId) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              '💰 수당 항목',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _showAddAllowanceDialog(clientId),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('수당 추가'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_allowances.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(child: Text('등록된 수당 항목이 없습니다')),
+          )
+        else
+          ..._allowances.map((allowance) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: allowance.isTaxFree ? Colors.orange.shade100 : Colors.blue.shade100,
+                child: Icon(
+                  Icons.attach_money,
+                  color: allowance.isTaxFree ? Colors.orange.shade700 : Colors.blue.shade700,
+                ),
+              ),
+              title: Text(allowance.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (allowance.isTaxFree)
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade100,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text('비과세', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                  if (allowance.defaultAmount != null)
+                    Text('기본 금액: ${formatMoney(allowance.defaultAmount!)}원'),
+                ],
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20),
+                    onPressed: () => _showEditAllowanceDialog(allowance),
+                    tooltip: '수정',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                    onPressed: () => _deleteAllowance(allowance),
+                    tooltip: '삭제',
+                  ),
+                ],
+              ),
+            ),
+          )),
+      ],
+    );
+  }
+
+  Widget _buildDeductionSection(int clientId) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              '📉 공제 항목',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _showAddDeductionDialog(clientId),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('공제 추가'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_deductions.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(child: Text('등록된 공제 항목이 없습니다')),
+          )
+        else
+          ..._deductions.map((deduction) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Colors.red.shade100,
+                child: Icon(Icons.remove_circle_outline, color: Colors.red.shade700),
+              ),
+              title: Text(deduction.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: deduction.defaultAmount != null
+                  ? Text('기본 금액: ${formatMoney(deduction.defaultAmount!)}원')
+                  : null,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20),
+                    onPressed: () => _showEditDeductionDialog(deduction),
+                    tooltip: '수정',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                    onPressed: () => _deleteDeduction(deduction),
+                    tooltip: '삭제',
+                  ),
+                ],
+              ),
+            ),
+          )),
+      ],
+    );
+  }
+
+  Future<void> _showAddAllowanceDialog(int clientId) async {
+    final nameController = TextEditingController();
+    final amountController = TextEditingController();
+    bool isTaxFree = false;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('수당 항목 추가'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: '수당 항목명',
+                  hintText: '예: 야간수당, 교통비, 식대',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: amountController,
+                decoration: const InputDecoration(
+                  labelText: '기본 금액 (선택)',
+                  hintText: '0',
+                  border: OutlineInputBorder(),
+                  suffixText: '원',
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+              const SizedBox(height: 16),
+              CheckboxListTile(
+                title: const Text('비과세 항목'),
+                subtitle: const Text('식대, 차량유지비 등'),
+                value: isTaxFree,
+                onChanged: (value) {
+                  setDialogState(() {
+                    isTaxFree = value ?? false;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (nameController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('항목명을 입력하세요')),
+                  );
+                  return;
+                }
+                _addAllowance(
+                  clientId,
+                  nameController.text,
+                  isTaxFree,
+                  amountController.text.isEmpty ? null : int.parse(amountController.text),
+                );
+                Navigator.pop(context);
+              },
+              child: const Text('추가'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addAllowance(int clientId, String name, bool isTaxFree, int? defaultAmount) async {
+    setState(() {
+      _allowances.add(AllowanceMaster(
+        id: DateTime.now().millisecondsSinceEpoch,
+        clientId: clientId,
+        name: name,
+        isTaxFree: isTaxFree,
+        defaultAmount: defaultAmount,
+      ));
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('수당 항목이 추가되었습니다'), backgroundColor: Colors.green),
+    );
+  }
+
+  Future<void> _showEditAllowanceDialog(AllowanceMaster allowance) async {
+    final nameController = TextEditingController(text: allowance.name);
+    final amountController = TextEditingController(text: allowance.defaultAmount?.toString() ?? '');
+    bool isTaxFree = allowance.isTaxFree;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('수당 항목 수정'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: '수당 항목명', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: amountController,
+                decoration: const InputDecoration(
+                  labelText: '기본 금액 (선택)',
+                  border: OutlineInputBorder(),
+                  suffixText: '원',
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+              const SizedBox(height: 16),
+              CheckboxListTile(
+                title: const Text('비과세 항목'),
+                value: isTaxFree,
+                onChanged: (value) {
+                  setDialogState(() {
+                    isTaxFree = value ?? false;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _updateAllowance(
+                  allowance.id!,
+                  nameController.text,
+                  isTaxFree,
+                  amountController.text.isEmpty ? null : int.parse(amountController.text),
+                );
+                Navigator.pop(context);
+              },
+              child: const Text('저장'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateAllowance(int id, String name, bool isTaxFree, int? defaultAmount) async {
+    setState(() {
+      final index = _allowances.indexWhere((a) => a.id == id);
+      if (index != -1) {
+        _allowances[index] = AllowanceMaster(
+          id: id,
+          clientId: _allowances[index].clientId,
+          name: name,
+          isTaxFree: isTaxFree,
+          defaultAmount: defaultAmount,
+        );
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('수당 항목이 수정되었습니다'), backgroundColor: Colors.green),
+    );
+  }
+
+  Future<void> _deleteAllowance(AllowanceMaster allowance) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('수당 항목 삭제'),
+        content: Text('\'${allowance.name}\' 항목을 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() {
+        _allowances.removeWhere((a) => a.id == allowance.id);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('수당 항목이 삭제되었습니다')),
+      );
+    }
+  }
+
+  Future<void> _showAddDeductionDialog(int clientId) async {
+    final nameController = TextEditingController();
+    final amountController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('공제 항목 추가'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: '공제 항목명',
+                hintText: '예: 조퇴, 결근공제, 기타공제',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: amountController,
+              decoration: const InputDecoration(
+                labelText: '기본 금액 (선택)',
+                hintText: '0',
+                border: OutlineInputBorder(),
+                suffixText: '원',
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (nameController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('항목명을 입력하세요')),
+                );
+                return;
+              }
+              _addDeduction(
+                clientId,
+                nameController.text,
+                amountController.text.isEmpty ? null : int.parse(amountController.text),
+              );
+              Navigator.pop(context);
+            },
+            child: const Text('추가'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addDeduction(int clientId, String name, int? defaultAmount) async {
+    setState(() {
+      _deductions.add(DeductionMaster(
+        id: DateTime.now().millisecondsSinceEpoch,
+        clientId: clientId,
+        name: name,
+        defaultAmount: defaultAmount,
+      ));
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('공제 항목이 추가되었습니다'), backgroundColor: Colors.green),
+    );
+  }
+
+  Future<void> _showEditDeductionDialog(DeductionMaster deduction) async {
+    final nameController = TextEditingController(text: deduction.name);
+    final amountController = TextEditingController(text: deduction.defaultAmount?.toString() ?? '');
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('공제 항목 수정'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: '공제 항목명', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: amountController,
+              decoration: const InputDecoration(
+                labelText: '기본 금액 (선택)',
+                border: OutlineInputBorder(),
+                suffixText: '원',
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _updateDeduction(
+                deduction.id!,
+                nameController.text,
+                amountController.text.isEmpty ? null : int.parse(amountController.text),
+              );
+              Navigator.pop(context);
+            },
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateDeduction(int id, String name, int? defaultAmount) async {
+    setState(() {
+      final index = _deductions.indexWhere((d) => d.id == id);
+      if (index != -1) {
+        _deductions[index] = DeductionMaster(
+          id: id,
+          clientId: _deductions[index].clientId,
+          name: name,
+          defaultAmount: defaultAmount,
+        );
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('공제 항목이 수정되었습니다'), backgroundColor: Colors.green),
+    );
+  }
+
+  Future<void> _deleteDeduction(DeductionMaster deduction) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('공제 항목 삭제'),
+        content: Text('\'${deduction.name}\' 항목을 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() {
+        _deductions.removeWhere((d) => d.id == deduction.id);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('공제 항목이 삭제되었습니다')),
+      );
     }
   }
 }
