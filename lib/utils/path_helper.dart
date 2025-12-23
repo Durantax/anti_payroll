@@ -73,6 +73,7 @@ class PathHelper {
     required int month,
     required String fileType, // 'csv', 'pdf_register', 'pdf_payslip', 'html_payslip'
     String? workerName,
+    String? birthDate, // 생년월일 (YYMMDD) - 동명이인 구분용
     bool useClientSubfolders = true,
   }) {
     String fileName;
@@ -88,13 +89,23 @@ class PathHelper {
         if (workerName == null) {
           throw ArgumentError('workerName is required for payslip PDF');
         }
-        fileName = '${workerName}_${year}년${month.toString().padLeft(2, '0')}월_급여명세서.pdf';
+        // 생년월일이 있으면 파일명에 포함 (동명이인 구분)
+        if (birthDate != null && birthDate.isNotEmpty) {
+          fileName = '${workerName}(${birthDate})_${year}년${month.toString().padLeft(2, '0')}월_급여명세서.pdf';
+        } else {
+          fileName = '${workerName}_${year}년${month.toString().padLeft(2, '0')}월_급여명세서.pdf';
+        }
         break;
       case 'html_payslip':
         if (workerName == null) {
           throw ArgumentError('workerName is required for payslip HTML');
         }
-        fileName = '${workerName}_${year}년${month.toString().padLeft(2, '0')}월_급여명세서.html';
+        // 생년월일이 있으면 파일명에 포함 (동명이인 구분)
+        if (birthDate != null && birthDate.isNotEmpty) {
+          fileName = '${workerName}(${birthDate})_${year}년${month.toString().padLeft(2, '0')}월_급여명세서.html';
+        } else {
+          fileName = '${workerName}_${year}년${month.toString().padLeft(2, '0')}월_급여명세서.html';
+        }
         break;
       default:
         throw ArgumentError('Unknown file type: $fileType');

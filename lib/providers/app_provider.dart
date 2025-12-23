@@ -470,6 +470,19 @@ class AppProvider with ChangeNotifier {
     return _monthlyDataByWorker[workerId]?[_selectedDate.month];
   }
 
+  // 현재 월의 모든 직원 MonthlyData Map
+  Map<int, MonthlyData> get currentMonthlyDataMap {
+    final result = <int, MonthlyData>{};
+    for (var entry in _monthlyDataByWorker.entries) {
+      final workerId = entry.key;
+      final monthlyData = entry.value[_selectedDate.month];
+      if (monthlyData != null) {
+        result[workerId] = monthlyData;
+      }
+    }
+    return result;
+  }
+
   // ========== 급여 계산 ==========
 
   void _calculateSalary(int workerId) {
@@ -678,7 +691,7 @@ class AppProvider with ChangeNotifier {
         _selectedClient!.name,
         bizId: _selectedClient!.bizId,
         workers: currentWorkers,
-        monthlyDataMap: _monthlyData, // DB에서 가져온 월별 데이터 전달
+        monthlyDataMap: currentMonthlyDataMap, // 현재 월의 MonthlyData Map 전달
         basePath: basePath,
         useClientSubfolders: useSubfolders,
         year: selectedYear,

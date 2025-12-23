@@ -136,11 +136,7 @@ class _PayslipViewScreenState extends State<PayslipViewScreen> {
         );
         
         // 데이터 다시 로드
-        await provider.loadWorkerSalaries(
-          provider.selectedClient!.id!,
-          provider.selectedYear,
-          provider.selectedMonth,
-        );
+        await provider.loadWorkers(provider.selectedClient!.id!);
       }
     } catch (e) {
       if (mounted) {

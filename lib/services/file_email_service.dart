@@ -568,6 +568,7 @@ class FileEmailService {
       month: month,
       fileType: 'pdf_payslip',
       workerName: result.workerName,
+      birthDate: result.birthDate, // 동명이인 구분용
       useClientSubfolders: useClientSubfolders,
     );
     
@@ -842,6 +843,7 @@ class FileEmailService {
       month: month,
       fileType: 'html_payslip',
       workerName: result.workerName,
+      birthDate: result.birthDate, // 동명이인 구분용
       useClientSubfolders: useClientSubfolders,
     );
     
@@ -1229,7 +1231,7 @@ class FileEmailService {
       port: smtpConfig.port,
       username: smtpConfig.username,
       password: smtpConfig.password,
-      ssl: smtpConfig.useSsl,
+      ssl: smtpConfig.useSSL,
     );
 
     final subject = client.emailSubjectTemplate
