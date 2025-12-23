@@ -846,6 +846,74 @@ class FileEmailService {
       padding: 40px 20px;
       background-color: #f5f5f5;
     }
+    /* 인증 모달 스타일 */
+    .auth-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .auth-modal {
+      background-color: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      max-width: 400px;
+      width: 90%;
+    }
+    .auth-modal h2 {
+      margin-bottom: 10px;
+      color: #333;
+      font-size: 24px;
+    }
+    .auth-modal p {
+      color: #666;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .auth-input {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-family: 'Malgun Gothic', sans-serif;
+    }
+    .auth-input:focus {
+      outline: none;
+      border-color: #2196F3;
+    }
+    .auth-button {
+      width: 100%;
+      padding: 12px;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: 'Malgun Gothic', sans-serif;
+    }
+    .auth-button:hover {
+      background-color: #1976D2;
+    }
+    .auth-error {
+      color: #f44336;
+      font-size: 14px;
+      margin-top: 10px;
+      display: none;
+    }
+    .content-hidden {
+      display: none;
+    }
     .container {
       max-width: 800px;
       margin: 0 auto;
@@ -986,7 +1054,26 @@ class FileEmailService {
   </style>
 </head>
 <body>
-  <div class="container">
+  <!-- 생년월일 인증 모달 -->
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-modal">
+      <h2>🔐 본인 인증</h2>
+      <p>급여명세서를 확인하려면 생년월일을 입력하세요.</p>
+      <input 
+        type="text" 
+        class="auth-input" 
+        id="birthdateInput" 
+        placeholder="생년월일 6자리 (예: 900101)"
+        maxlength="6"
+        autocomplete="off"
+      />
+      <button class="auth-button" onclick="verifyBirthdate()">확인</button>
+      <div class="auth-error" id="authError">생년월일이 일치하지 않습니다. 다시 시도해주세요.</div>
+    </div>
+  </div>
+
+  <!-- 명세서 내용 (인증 후 표시) -->
+  <div class="container content-hidden" id="payslipContent">
     <div class="banner">
       <span class="banner-icon">🌐</span>
       <span class="banner-text">HTML 형식으로 표시 중 (웹 브라우저 호환)</span>
@@ -1158,6 +1245,43 @@ class FileEmailService {
       <span class="net-payment-amount">${_formatNumber(result.netPayment)}원</span>
     </div>
   </div>
+
+  <script>
+    // 실제 생년월일 (YYMMDD)
+    const correctBirthdate = '${result.birthDate}';
+    
+    // 페이지 로드 시 입력창에 포커스
+    document.getElementById('birthdateInput').focus();
+    
+    // 엔터키로도 확인 가능
+    document.getElementById('birthdateInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        verifyBirthdate();
+      }
+    });
+    
+    // 생년월일 인증 함수
+    function verifyBirthdate() {
+      const input = document.getElementById('birthdateInput').value.trim();
+      const errorDiv = document.getElementById('authError');
+      
+      if (input === correctBirthdate) {
+        // 인증 성공
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('payslipContent').classList.remove('content-hidden');
+      } else {
+        // 인증 실패
+        errorDiv.style.display = 'block';
+        document.getElementById('birthdateInput').value = '';
+        document.getElementById('birthdateInput').focus();
+        
+        // 3초 후 에러 메시지 숨기기
+        setTimeout(function() {
+          errorDiv.style.display = 'none';
+        }, 3000);
+      }
+    }
+  </script>
 </body>
 </html>
 ''';
