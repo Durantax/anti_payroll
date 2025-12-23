@@ -460,4 +460,152 @@ class ApiService {
       throw Exception('일괄 마감 실패: ${response.statusCode}');
     }
   }
+
+  // ========== 수당/공제 마스터 ==========
+
+  /// 거래처별 수당 마스터 조회
+  Future<List<AllowanceMaster>> getAllowanceMasters(int clientId) async {
+    final response = await http.get(
+      Uri.parse('$_serverUrl/clients/$clientId/allowance-masters'),
+      headers: _headers,
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
+      return data.map((json) => AllowanceMaster.fromJson(json)).toList();
+    } else {
+      throw Exception('수당 마스터 조회 실패: ${response.statusCode}');
+    }
+  }
+
+  /// 수당 마스터 생성
+  Future<AllowanceMaster> createAllowanceMaster({
+    required int clientId,
+    required String name,
+    required bool isTaxFree,
+    int? defaultAmount,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$_serverUrl/clients/$clientId/allowance-masters'),
+      headers: _headers,
+      body: json.encode({
+        'name': name,
+        'isTaxFree': isTaxFree,
+        if (defaultAmount != null) 'defaultAmount': defaultAmount,
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return AllowanceMaster.fromJson(json.decode(utf8.decode(response.bodyBytes)));
+    } else {
+      throw Exception('수당 마스터 생성 실패: ${response.statusCode}');
+    }
+  }
+
+  /// 수당 마스터 수정
+  Future<AllowanceMaster> updateAllowanceMaster({
+    required int allowanceId,
+    required String name,
+    required bool isTaxFree,
+    int? defaultAmount,
+  }) async {
+    final response = await http.patch(
+      Uri.parse('$_serverUrl/allowance-masters/$allowanceId'),
+      headers: _headers,
+      body: json.encode({
+        'name': name,
+        'isTaxFree': isTaxFree,
+        if (defaultAmount != null) 'defaultAmount': defaultAmount,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return AllowanceMaster.fromJson(json.decode(utf8.decode(response.bodyBytes)));
+    } else {
+      throw Exception('수당 마스터 수정 실패: ${response.statusCode}');
+    }
+  }
+
+  /// 수당 마스터 삭제
+  Future<void> deleteAllowanceMaster(int allowanceId) async {
+    final response = await http.delete(
+      Uri.parse('$_serverUrl/allowance-masters/$allowanceId'),
+      headers: _headers,
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('수당 마스터 삭제 실패: ${response.statusCode}');
+    }
+  }
+
+  /// 거래처별 공제 마스터 조회
+  Future<List<DeductionMaster>> getDeductionMasters(int clientId) async {
+    final response = await http.get(
+      Uri.parse('$_serverUrl/clients/$clientId/deduction-masters'),
+      headers: _headers,
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
+      return data.map((json) => DeductionMaster.fromJson(json)).toList();
+    } else {
+      throw Exception('공제 마스터 조회 실패: ${response.statusCode}');
+    }
+  }
+
+  /// 공제 마스터 생성
+  Future<DeductionMaster> createDeductionMaster({
+    required int clientId,
+    required String name,
+    int? defaultAmount,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$_serverUrl/clients/$clientId/deduction-masters'),
+      headers: _headers,
+      body: json.encode({
+        'name': name,
+        if (defaultAmount != null) 'defaultAmount': defaultAmount,
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return DeductionMaster.fromJson(json.decode(utf8.decode(response.bodyBytes)));
+    } else {
+      throw Exception('공제 마스터 생성 실패: ${response.statusCode}');
+    }
+  }
+
+  /// 공제 마스터 수정
+  Future<DeductionMaster> updateDeductionMaster({
+    required int deductionId,
+    required String name,
+    int? defaultAmount,
+  }) async {
+    final response = await http.patch(
+      Uri.parse('$_serverUrl/deduction-masters/$deductionId'),
+      headers: _headers,
+      body: json.encode({
+        'name': name,
+        if (defaultAmount != null) 'defaultAmount': defaultAmount,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return DeductionMaster.fromJson(json.decode(utf8.decode(response.bodyBytes)));
+    } else {
+      throw Exception('공제 마스터 수정 실패: ${response.statusCode}');
+    }
+  }
+
+  /// 공제 마스터 삭제
+  Future<void> deleteDeductionMaster(int deductionId) async {
+    final response = await http.delete(
+      Uri.parse('$_serverUrl/deduction-masters/$deductionId'),
+      headers: _headers,
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('공제 마스터 삭제 실패: ${response.statusCode}');
+    }
+  }
 }

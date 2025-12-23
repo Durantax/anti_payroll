@@ -379,14 +379,21 @@ class _AllowanceDeductionManagementTabState extends State<_AllowanceDeductionMan
     setState(() => _isLoading = true);
     
     try {
-      // TODO: API 호출하여 수당/공제 마스터 데이터 불러오기
+      final allowances = await provider.apiService.getAllowanceMasters(selectedClient.id);
+      final deductions = await provider.apiService.getDeductionMasters(selectedClient.id);
+      
       setState(() {
-        _allowances = [];
-        _deductions = [];
+        _allowances = allowances;
+        _deductions = deductions;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('데이터 로드 실패: $e')),
+        );
+      }
     }
   }
 
@@ -660,18 +667,31 @@ class _AllowanceDeductionManagementTabState extends State<_AllowanceDeductionMan
   }
 
   Future<void> _addAllowance(int clientId, String name, bool isTaxFree, int? defaultAmount) async {
-    setState(() {
-      _allowances.add(AllowanceMaster(
-        id: DateTime.now().millisecondsSinceEpoch,
+    try {
+      final provider = context.read<AppProvider>();
+      final newAllowance = await provider.apiService.createAllowanceMaster(
         clientId: clientId,
         name: name,
         isTaxFree: isTaxFree,
         defaultAmount: defaultAmount,
-      ));
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('수당 항목이 추가되었습니다'), backgroundColor: Colors.green),
-    );
+      );
+      
+      setState(() {
+        _allowances.add(newAllowance);
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('수당 항목이 추가되었습니다'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('추가 실패: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _showEditAllowanceDialog(AllowanceMaster allowance) async {
@@ -738,21 +758,34 @@ class _AllowanceDeductionManagementTabState extends State<_AllowanceDeductionMan
   }
 
   Future<void> _updateAllowance(int id, String name, bool isTaxFree, int? defaultAmount) async {
-    setState(() {
-      final index = _allowances.indexWhere((a) => a.id == id);
-      if (index != -1) {
-        _allowances[index] = AllowanceMaster(
-          id: id,
-          clientId: _allowances[index].clientId,
-          name: name,
-          isTaxFree: isTaxFree,
-          defaultAmount: defaultAmount,
+    try {
+      final provider = context.read<AppProvider>();
+      final updatedAllowance = await provider.apiService.updateAllowanceMaster(
+        allowanceId: id,
+        name: name,
+        isTaxFree: isTaxFree,
+        defaultAmount: defaultAmount,
+      );
+      
+      setState(() {
+        final index = _allowances.indexWhere((a) => a.id == id);
+        if (index != -1) {
+          _allowances[index] = updatedAllowance;
+        }
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('수당 항목이 수정되었습니다'), backgroundColor: Colors.green),
         );
       }
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('수당 항목이 수정되었습니다'), backgroundColor: Colors.green),
-    );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('수정 실패: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _deleteAllowance(AllowanceMaster allowance) async {
@@ -776,12 +809,26 @@ class _AllowanceDeductionManagementTabState extends State<_AllowanceDeductionMan
     );
 
     if (confirm == true) {
-      setState(() {
-        _allowances.removeWhere((a) => a.id == allowance.id);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('수당 항목이 삭제되었습니다')),
-      );
+      try {
+        final provider = context.read<AppProvider>();
+        await provider.apiService.deleteAllowanceMaster(allowance.id!);
+        
+        setState(() {
+          _allowances.removeWhere((a) => a.id == allowance.id);
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('수당 항목이 삭제되었습니다')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('삭제 실패: $e')),
+          );
+        }
+      }
     }
   }
 
@@ -846,17 +893,30 @@ class _AllowanceDeductionManagementTabState extends State<_AllowanceDeductionMan
   }
 
   Future<void> _addDeduction(int clientId, String name, int? defaultAmount) async {
-    setState(() {
-      _deductions.add(DeductionMaster(
-        id: DateTime.now().millisecondsSinceEpoch,
+    try {
+      final provider = context.read<AppProvider>();
+      final newDeduction = await provider.apiService.createDeductionMaster(
         clientId: clientId,
         name: name,
         defaultAmount: defaultAmount,
-      ));
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('공제 항목이 추가되었습니다'), backgroundColor: Colors.green),
-    );
+      );
+      
+      setState(() {
+        _deductions.add(newDeduction);
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('공제 항목이 추가되었습니다'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('추가 실패: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _showEditDeductionDialog(DeductionMaster deduction) async {
@@ -909,20 +969,33 @@ class _AllowanceDeductionManagementTabState extends State<_AllowanceDeductionMan
   }
 
   Future<void> _updateDeduction(int id, String name, int? defaultAmount) async {
-    setState(() {
-      final index = _deductions.indexWhere((d) => d.id == id);
-      if (index != -1) {
-        _deductions[index] = DeductionMaster(
-          id: id,
-          clientId: _deductions[index].clientId,
-          name: name,
-          defaultAmount: defaultAmount,
+    try {
+      final provider = context.read<AppProvider>();
+      final updatedDeduction = await provider.apiService.updateDeductionMaster(
+        deductionId: id,
+        name: name,
+        defaultAmount: defaultAmount,
+      );
+      
+      setState(() {
+        final index = _deductions.indexWhere((d) => d.id == id);
+        if (index != -1) {
+          _deductions[index] = updatedDeduction;
+        }
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('공제 항목이 수정되었습니다'), backgroundColor: Colors.green),
         );
       }
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('공제 항목이 수정되었습니다'), backgroundColor: Colors.green),
-    );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('수정 실패: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _deleteDeduction(DeductionMaster deduction) async {
@@ -946,12 +1019,26 @@ class _AllowanceDeductionManagementTabState extends State<_AllowanceDeductionMan
     );
 
     if (confirm == true) {
-      setState(() {
-        _deductions.removeWhere((d) => d.id == deduction.id);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('공제 항목이 삭제되었습니다')),
-      );
+      try {
+        final provider = context.read<AppProvider>();
+        await provider.apiService.deleteDeductionMaster(deduction.id!);
+        
+        setState(() {
+          _deductions.removeWhere((d) => d.id == deduction.id);
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('공제 항목이 삭제되었습니다')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('삭제 실패: $e')),
+          );
+        }
+      }
     }
   }
 }
