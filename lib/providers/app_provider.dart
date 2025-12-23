@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:network_info_plus/network_info_plus.dart';
 import '../core/models.dart';
 import '../core/constants.dart';
 import '../services/api_service.dart';
@@ -31,6 +32,10 @@ class AppProvider with ChangeNotifier {
 
   Timer? _statusCheckTimer;
   Timer? _autoSendTimer;
+  
+  // 자동 발송 기록 (중복 발송 방지)
+  String? _lastAutoSendDate; // YYYY-MM-DD 형식
+  String? _lastRetryDate; // YYYY-MM-DD 형식
 
   AppProvider({ApiService? apiService})
       : _apiService = apiService ?? ApiService() {
@@ -1164,28 +1169,218 @@ class AppProvider with ChangeNotifier {
     });
   }
 
+  /// 하마치 IP 가져오기 (25.x.x.x 대역)
+  Future<String?> _getHamachiIP() async {
+    try {
+      final interfaces = await NetworkInterface.list();
+      
+      for (var interface in interfaces) {
+        for (var addr in interface.addresses) {
+          // 하마치 IP는 25.x.x.x 대역
+          if (addr.address.startsWith('25.')) {
+            print('[NETWORK] Hamachi IP found: ${addr.address}');
+            return addr.address;
+          }
+        }
+      }
+    } catch (e) {
+      print('[ERROR] Failed to get Hamachi IP: $e');
+    }
+    
+    return null;
+  }
+
+  /// 서버 PC인지 확인 (하마치 IP 체크)
+  Future<bool> _isServerPC() async {
+    final myHamachiIP = await _getHamachiIP();
+    final serverIP = AppConstants.defaultServerUrl.replaceAll('http://', '').split(':')[0];
+    
+    if (myHamachiIP == null) {
+      print('[AUTO] ❌ Hamachi IP not found. Auto send disabled.');
+      return false;
+    }
+    
+    final isServer = myHamachiIP == serverIP;
+    
+    if (isServer) {
+      print('[AUTO] ✅ This is SERVER PC (IP: $myHamachiIP)');
+    } else {
+      print('[AUTO] ❌ This is CLIENT PC (IP: $myHamachiIP, Server: $serverIP)');
+    }
+    
+    return isServer;
+  }
+
   Future<void> _checkAutoSend() async {
+    // 서버 PC인지 확인
+    if (!await _isServerPC()) {
+      return; // 서버 PC가 아니면 자동 발송 안함
+    }
+
     final now = DateTime.now();
 
-    // 오전 9시 체크
+    // 오전 9시 체크 (9:00 ~ 9:10)
     if (now.hour == AppConstants.autoSendHour && now.minute < 10) {
       await _autoSendPending();
     }
 
-    // 오후 12시 재시도
+    // 오후 12시 재시도 (12:00 ~ 12:10)
     if (now.hour == AppConstants.retryHour && now.minute < 10) {
       await _retryFailed();
     }
   }
 
   Future<void> _autoSendPending() async {
-    // TODO: 오늘 발송 대상 거래처 조회 및 자동 발송
-    print('[AUTO] 오전 9시 자동 발송 체크');
+    print('[AUTO] ========================================');
+    print('[AUTO] 오전 ${AppConstants.autoSendHour}시 자동 발송 체크 시작');
+    print('[AUTO] ========================================');
+    
+    // 서버 PC인지 재확인
+    if (!await _isServerPC()) {
+      print('[AUTO] 서버 PC가 아니므로 자동 발송 건너뜀');
+      return;
+    }
+
+    try {
+      final today = DateTime.now();
+      final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      
+      // 오늘 이미 발송했는지 체크 (중복 발송 방지)
+      if (_lastAutoSendDate == todayStr) {
+        print('[AUTO] ⚠️  오늘 이미 자동 발송을 완료했습니다. 건너뜀.');
+        return;
+      }
+      
+      // 모든 거래처 조회
+      if (_clients.isEmpty) {
+        await syncClients();
+      }
+      
+      // 오늘이 발송일인 거래처 필터링
+      final targetClients = _clients.where((client) {
+        return client.slipSendDay == today.day;
+      }).toList();
+      
+      if (targetClients.isEmpty) {
+        print('[AUTO] 오늘(${today.day}일) 발송할 거래처가 없습니다.');
+        return;
+      }
+      
+      print('[AUTO] 📧 발송 대상 거래처: ${targetClients.length}개');
+      
+      int successCount = 0;
+      int failCount = 0;
+      
+      for (var client in targetClients) {
+        try {
+          print('[AUTO] ---------------------------------------');
+          print('[AUTO] 거래처: "${client.name}" 자동 발송 시작...');
+          
+          // 거래처 선택
+          _selectedClient = client;
+          
+          // 직원 목록 로드
+          await loadWorkers();
+          
+          if (_workers.isEmpty) {
+            print('[AUTO] ⚠️  "${client.name}": 직원이 없습니다. 건너뜀.');
+            continue;
+          }
+          
+          // 월별 데이터 로드
+          await loadMonthlyData();
+          
+          // 급여 계산
+          await calculateAllSalaries();
+          
+          // 이메일 사용 설정된 직원 확인
+          final emailWorkers = _workers.where((w) => w.useEmail && w.emailTo != null && w.emailTo!.isNotEmpty).toList();
+          
+          if (emailWorkers.isEmpty) {
+            print('[AUTO] ⚠️  "${client.name}": 이메일 설정된 직원이 없습니다. 건너뜀.');
+            continue;
+          }
+          
+          print('[AUTO] 📨 이메일 발송 시작... (${emailWorkers.length}명)');
+          
+          // 이메일 일괄 발송
+          await sendAllEmails();
+          
+          print('[AUTO] ✅ "${client.name}" 발송 완료 (${emailWorkers.length}명)');
+          successCount++;
+          
+        } catch (e) {
+          print('[AUTO] ❌ "${client.name}" 발송 실패: $e');
+          failCount++;
+        }
+      }
+      
+      print('[AUTO] ========================================');
+      print('[AUTO] 자동 발송 완료!');
+      print('[AUTO] 성공: $successCount개 거래처');
+      print('[AUTO] 실패: $failCount개 거래처');
+      print('[AUTO] ========================================');
+      
+      // 발송 기록 저장 (중복 방지)
+      _lastAutoSendDate = todayStr;
+      
+    } catch (e) {
+      print('[AUTO ERROR] 자동 발송 중 오류 발생: $e');
+    }
   }
 
   Future<void> _retryFailed() async {
-    // TODO: 실패건 재발송
-    print('[AUTO] 오후 12시 재시도');
+    print('[AUTO] ========================================');
+    print('[AUTO] 오후 ${AppConstants.retryHour}시 실패건 재시도 시작');
+    print('[AUTO] ========================================');
+    
+    // 서버 PC인지 재확인
+    if (!await _isServerPC()) {
+      print('[AUTO] 서버 PC가 아니므로 재시도 건너뜀');
+      return;
+    }
+
+    try {
+      final today = DateTime.now();
+      final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      
+      // 오늘 이미 재시도했는지 체크 (중복 방지)
+      if (_lastRetryDate == todayStr) {
+        print('[AUTO] ⚠️  오늘 이미 재시도를 완료했습니다. 건너뜀.');
+        return;
+      }
+      
+      // 발송 상태 로드
+      await loadSendStatus();
+      
+      if (_sendStatus == null) {
+        print('[AUTO] 발송 상태 정보가 없습니다.');
+        return;
+      }
+      
+      // 실패건이 있는지 확인
+      final failedCount = _sendStatus!.failedList.length;
+      
+      if (failedCount == 0) {
+        print('[AUTO] 재시도할 실패건이 없습니다.');
+        return;
+      }
+      
+      print('[AUTO] 🔄 실패건 재시도 시작... ($failedCount건)');
+      
+      // 실패건 재발송
+      await retryFailedEmails();
+      
+      print('[AUTO] ========================================');
+      print('[AUTO] 실패건 재시도 완료!');
+      print('[AUTO] ========================================');
+      
+      // 재시도 기록 저장 (중복 방지)
+      _lastRetryDate = todayStr;
+      
+    } catch (e) {
+      print('[AUTO ERROR] 실패건 재시도 중 오류 발생: $e');
+    }
   }
 
   Future<void> retryFailedEmails() async {

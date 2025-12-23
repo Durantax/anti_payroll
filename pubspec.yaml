@@ -36,6 +36,9 @@ dependencies:
   # 이메일
   mailer: ^6.0.1
   
+  # 네트워크 정보
+  network_info_plus: ^5.0.0
+  
   # PDF 암호화
   archive: ^3.4.9
 
