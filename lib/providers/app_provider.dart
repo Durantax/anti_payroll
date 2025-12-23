@@ -686,12 +686,10 @@ class AppProvider with ChangeNotifier {
       final basePath = _getValidBasePath();
       final useSubfolders = settings?.useClientSubfolders ?? true;
       
-      // 현재 거래처의 직원 목록을 템플릿에 포함
+      // 빈 템플릿 생성 (사용자가 직접 입력)
       await FileEmailService.generateExcelTemplate(
         _selectedClient!.name,
         bizId: _selectedClient!.bizId,
-        workers: currentWorkers,
-        monthlyDataMap: currentMonthlyDataMap, // 현재 월의 MonthlyData Map 전달
         basePath: basePath,
         useClientSubfolders: useSubfolders,
         year: selectedYear,

@@ -21,8 +21,6 @@ class FileEmailService {
   static Future<File> generateExcelTemplate(
     String clientName, {
     String? bizId,
-    List<WorkerModel>? workers,
-    Map<int, MonthlyData>? monthlyDataMap,
     required String basePath,
     bool useClientSubfolders = true,
     required int year,
@@ -49,7 +47,7 @@ class FileEmailService {
     sheet.cell(CellIndex.indexByString('B3')).value = TextCellValue('월급제: 월급란에 금액 입력 (시급란은 0 또는 빈칸)');
     sheet.cell(CellIndex.indexByString('G3')).value = TextCellValue('시급제: 시급란에 금액 입력 (월급란은 0 또는 빈칸)');
 
-    // 헤더 (4행)
+    // 헤더 (4행) - 기본 정보만
     final headers = [
       '이름',
       '생년월일(YYMMDD)',
@@ -76,44 +74,8 @@ class FileEmailService {
           .value = TextCellValue(headers[i]);
     }
 
-    // 기존 직원 정보 자동 입력
-    if (workers != null && workers.isNotEmpty) {
-      for (var i = 0; i < workers.length; i++) {
-        final worker = workers[i];
-        final rowIndex = 4 + i; // 5행부터 시작
-        
-        // 해당 직원의 월별 데이터 가져오기
-        final monthlyData = monthlyDataMap != null && worker.id != null 
-            ? monthlyDataMap[worker.id!] 
-            : null;
-        
-        final rowData = [
-          worker.name,
-          worker.birthDate,
-          worker.joinDate ?? '', // 입사일 (DB에서 가져오기)
-          worker.resignDate ?? '', // 퇴사일 (DB에서 가져오기)
-          worker.monthlySalary.toString(),
-          worker.hourlyRate.toString(),
-          monthlyData?.weeklyHours.toStringAsFixed(0) ?? '40', // DB에서 가져오기 (기본값 40)
-          monthlyData?.normalHours.toStringAsFixed(0) ?? '0', // DB에서 가져오기
-          monthlyData?.overtimeHours.toStringAsFixed(0) ?? '0', // 연장
-          monthlyData?.nightHours.toStringAsFixed(0) ?? '0', // 야간
-          monthlyData?.holidayHours.toStringAsFixed(0) ?? '0', // 휴일
-          monthlyData?.weekCount.toString() ?? '4', // 개근주수
-          monthlyData?.bonus.toString() ?? '0', // 상여
-          '0', // 추가수당1
-          '0', // 추가수당2
-          '0', // 추가공제1
-          '0', // 추가공제2
-        ];
-        
-        for (var j = 0; j < rowData.length; j++) {
-          sheet
-              .cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: rowIndex))
-              .value = TextCellValue(rowData[j]);
-        }
-      }
-    }
+    // 직원 데이터는 사용자가 직접 입력하도록 빈 템플릿 제공
+    // (매달 변경되는 값들은 DB에서 가져오지 않음)
 
     final bytes = excel.encode();
     
