@@ -29,6 +29,8 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
   // 기본정보
   late TextEditingController _nameController;
   late TextEditingController _birthDateController;
+  late TextEditingController _joinDateController;
+  late TextEditingController _resignDateController;
   late TextEditingController _phoneController;
 
   // 세금 정보
@@ -74,6 +76,9 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
   late bool _hasHealthInsurance;
   late bool _hasEmploymentInsurance;
   late String _healthInsuranceBasis;
+  
+  // 두루누리 지원
+  late bool _isDurunuri;
 
   // 이메일
   late TextEditingController _emailToController;
@@ -94,6 +99,8 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
     // 기본정보
     _nameController = TextEditingController(text: worker?.name ?? '');
     _birthDateController = TextEditingController(text: worker?.birthDate ?? '');
+    _joinDateController = TextEditingController(text: worker?.joinDate ?? '');
+    _resignDateController = TextEditingController(text: worker?.resignDate ?? '');
     _phoneController = TextEditingController(text: worker?.phoneNumber ?? '');
 
     // 급여 정보
@@ -131,6 +138,9 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
     _hasHealthInsurance = worker?.hasHealthInsurance ?? true;
     _hasEmploymentInsurance = worker?.hasEmploymentInsurance ?? true;
     _healthInsuranceBasis = worker?.healthInsuranceBasis ?? 'salary';
+    
+    // 두루누리 지원
+    _isDurunuri = monthly?.isDurunuri ?? false;
 
     // 이메일
     _emailToController = TextEditingController(text: worker?.emailTo ?? '');
@@ -154,6 +164,8 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
     _tabController.dispose();
     _nameController.dispose();
     _birthDateController.dispose();
+    _joinDateController.dispose();
+    _resignDateController.dispose();
     _phoneController.dispose();
     _monthlySalaryController.dispose();
     _hourlyRateController.dispose();

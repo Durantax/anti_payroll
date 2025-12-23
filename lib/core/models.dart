@@ -70,6 +70,7 @@ class WorkerModel {
   final int clientId;
   final String name;
   final String birthDate; // YYMMDD
+  final String? joinDate; // YYYY-MM-DD (입사일)
   final String? resignDate; // YYYY-MM-DD (퇴사일)
   final String phoneNumber;
   final String email;
@@ -104,6 +105,7 @@ class WorkerModel {
     required this.clientId,
     required this.name,
     required this.birthDate,
+    this.joinDate,
     this.resignDate,
     this.phoneNumber = '',
     this.email = '',
@@ -136,6 +138,7 @@ class WorkerModel {
       clientId: json['clientId'] as int,
       name: json['name'] as String? ?? '',
       birthDate: json['birthDate'] as String? ?? '',
+      joinDate: json['joinDate'] as String?,
       resignDate: json['resignDate'] as String?,
       phoneNumber: json['phoneNumber'] as String? ?? '',
       email: json['email'] as String? ?? '',
