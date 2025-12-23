@@ -963,6 +963,122 @@ class AppProvider with ChangeNotifier {
     }
   }
 
+  /// HTML 명세서 일괄생성
+  Future<void> generateAllHtmlPayslips() async {
+    if (_selectedClient == null || _salaryResults.isEmpty) return;
+
+    try {
+      _setLoading(true);
+      
+      // 마감된 직원 목록
+      final finalizedWorkers = _salaryResults.entries
+          .where((entry) => isWorkerFinalized(entry.key))
+          .toList();
+      
+      if (finalizedWorkers.isEmpty) {
+        _setError('마감된 직원이 없습니다.');
+        return;
+      }
+      
+      int successCount = 0;
+      int totalCount = finalizedWorkers.length;
+      
+      // 기본 경로 사용 (기본값: OneDrive)
+      final basePath = _getValidBasePath();
+      final useSubfolders = settings?.useClientSubfolders ?? true;
+      
+      for (var i = 0; i < finalizedWorkers.length; i++) {
+        final entry = finalizedWorkers[i];
+        final workerId = entry.key;
+        final result = entry.value;
+        
+        try {
+          await FileEmailService.generatePayslipHtml(
+            client: _selectedClient!,
+            result: result,
+            year: selectedYear,
+            month: selectedMonth,
+            basePath: basePath,
+            useClientSubfolders: useSubfolders,
+          );
+          successCount++;
+          
+          // 진행 상황 업데이트
+          _setError('HTML 명세서 생성 중... ($successCount/$totalCount)');
+          notifyListeners();
+        } catch (e) {
+          print('HTML 생성 실패 (${result.workerName}): $e');
+        }
+      }
+      
+      _setError('HTML 명세서 $successCount개 생성 완료!');
+      
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// HTML 형식으로 이메일 일괄발송
+  Future<void> sendAllEmailsAsHtml() async {
+    if (_selectedClient == null || _smtpConfig == null) return;
+
+    // 마감된 직원 중에서 이메일 발송 조건에 맞는 직원만 선택
+    final targetWorkers = currentWorkers.where((w) =>
+        w.useEmail && 
+        w.emailTo != null && 
+        w.emailTo!.isNotEmpty && 
+        w.id != null && 
+        isWorkerFinalized(w.id!)).toList();
+
+    if (targetWorkers.isEmpty) {
+      _setError('발송 대상이 없습니다');
+      return;
+    }
+
+    try {
+      _setLoading(true);
+      int successCount = 0;
+      int failCount = 0;
+
+      final basePath = _getValidBasePath();
+      final useSubfolders = settings?.useClientSubfolders ?? true;
+
+      for (var worker in targetWorkers) {
+        try {
+          final result = _salaryResults[worker.id!];
+          if (result == null) continue;
+
+          await FileEmailService.sendPayslipEmailAsHtml(
+            client: _selectedClient!,
+            worker: worker,
+            result: result,
+            year: selectedYear,
+            month: selectedMonth,
+            smtpConfig: _smtpConfig!,
+            basePath: basePath,
+            useClientSubfolders: useSubfolders,
+          );
+          successCount++;
+        } catch (e) {
+          failCount++;
+          print('${worker.name} HTML 발송 실패: $e');
+        }
+      }
+
+      _setError(null);
+      notifyListeners();
+
+      // 결과 메시지
+      if (failCount == 0) {
+        _setError('✅ HTML 전체 발송 완료: $successCount명');
+      } else {
+        _setError('HTML 발송 완료: 성공 $successCount명, 실패 $failCount명');
+      }
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // ========== 발송 상태 ==========
 
   Future<void> loadSendStatus() async {

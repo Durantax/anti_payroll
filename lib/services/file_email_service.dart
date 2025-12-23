@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert' show utf8;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -796,5 +797,452 @@ class FileEmailService {
     }
 
     await send(message, smtpServer);
+  }
+
+  /// HTML 명세서 생성
+  static Future<File> generatePayslipHtml({
+    required ClientModel client,
+    required SalaryResult result,
+    required int year,
+    required int month,
+    required String basePath,
+    bool useClientSubfolders = true,
+  }) async {
+    final htmlContent = _generateHtmlContent(
+      client: client,
+      result: result,
+      year: year,
+      month: month,
+    );
+
+    // 자동 경로 생성
+    final filePath = PathHelper.getFilePath(
+      basePath: basePath,
+      clientName: client.name,
+      year: year,
+      month: month,
+      fileType: 'html_payslip',
+      workerName: result.workerName,
+      useClientSubfolders: useClientSubfolders,
+    );
+    
+    // 폴더 생성
+    final directory = Directory(filePath).parent;
+    await PathHelper.ensureDirectoryExists(directory.path);
+
+    // 파일 저장 (덮어쓰기)
+    final file = File(filePath);
+    await file.writeAsString(htmlContent, encoding: utf8);
+
+    return file;
+  }
+
+  /// HTML 컨텐츠 생성
+  static String _generateHtmlContent({
+    required ClientModel client,
+    required SalaryResult result,
+    required int year,
+    required int month,
+  }) {
+    // HTML 템플릿
+    return '''
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>급여명세서 - ${result.workerName}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Malgun Gothic', sans-serif;
+      padding: 40px 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border: 2px solid #2196F3;
+    }
+    .banner {
+      background-color: #E3F2FD;
+      padding: 12px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+    }
+    .banner-icon {
+      color: #1976D2;
+      margin-right: 8px;
+      font-size: 20px;
+    }
+    .banner-text {
+      color: #0D47A1;
+      font-weight: 500;
+    }
+    .title {
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 30px;
+      color: #0D47A1;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #666;
+      margin-bottom: 12px;
+    }
+    .info-row {
+      display: flex;
+      padding: 8px 0;
+    }
+    .info-label {
+      width: 150px;
+      color: #999;
+    }
+    .info-value {
+      flex: 1;
+      font-weight: 500;
+    }
+    .divider {
+      height: 2px;
+      background-color: #333;
+      margin: 24px 0;
+    }
+    .amount-section {
+      margin-bottom: 24px;
+    }
+    .amount-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+    .amount-title.payment {
+      color: #1976D2;
+    }
+    .amount-title.deduction {
+      color: #D32F2F;
+    }
+    .amount-table {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .amount-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid #eee;
+    }
+    .amount-row:last-child {
+      border-bottom: none;
+    }
+    .amount-formula {
+      font-size: 12px;
+      color: #999;
+      margin-top: 4px;
+    }
+    .amount-total {
+      background-color: #E3F2FD;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+    }
+    .amount-total.payment {
+      background-color: #E3F2FD;
+      color: #0D47A1;
+    }
+    .amount-total.deduction {
+      background-color: #FFEBEE;
+      color: #B71C1C;
+    }
+    .net-payment {
+      background-color: #C8E6C9;
+      border: 3px solid #388E3C;
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 32px 0;
+    }
+    .net-payment-label {
+      font-size: 20px;
+      font-weight: bold;
+      color: #1B5E20;
+    }
+    .net-payment-amount {
+      font-size: 28px;
+      font-weight: bold;
+      color: #1B5E20;
+    }
+    @media print {
+      body {
+        background-color: white;
+        padding: 0;
+      }
+      .container {
+        box-shadow: none;
+        border: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="banner">
+      <span class="banner-icon">🌐</span>
+      <span class="banner-text">HTML 형식으로 표시 중 (웹 브라우저 호환)</span>
+    </div>
+    
+    <h1 class="title">급여명세서</h1>
+    
+    <div class="section">
+      <div class="section-title">회사 정보</div>
+      <div class="info-row">
+        <span class="info-label">회사명</span>
+        <span class="info-value">${client.name}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">사업자등록번호</span>
+        <span class="info-value">${client.bizId}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">지급 연월</span>
+        <span class="info-value">${year}년 ${month}월</span>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">직원 정보</div>
+      <div class="info-row">
+        <span class="info-label">성명</span>
+        <span class="info-value">${result.workerName}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">생년월일</span>
+        <span class="info-value">${result.birthDate}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">구분</span>
+        <span class="info-value">${result.employmentType == 'regular' ? '근로소득' : '사업소득'}</span>
+      </div>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="amount-section">
+      <div class="amount-title payment">지급 항목</div>
+      <div class="amount-table">
+        <div class="amount-row">
+          <div>
+            <div>기본급</div>
+            ${result.baseSalaryFormula.isNotEmpty ? '<div class="amount-formula">계산: ${result.baseSalaryFormula}</div>' : ''}
+          </div>
+          <div>${_formatNumber(result.baseSalary)}원</div>
+        </div>
+        ${result.overtimePay > 0 ? '''
+        <div class="amount-row">
+          <div>
+            <div>연장수당</div>
+            ${result.overtimeFormula.isNotEmpty ? '<div class="amount-formula">계산: ${result.overtimeFormula}</div>' : ''}
+          </div>
+          <div>${_formatNumber(result.overtimePay)}원</div>
+        </div>
+        ''' : ''}
+        ${result.nightPay > 0 ? '''
+        <div class="amount-row">
+          <div>
+            <div>야간수당</div>
+            ${result.nightFormula.isNotEmpty ? '<div class="amount-formula">계산: ${result.nightFormula}</div>' : ''}
+          </div>
+          <div>${_formatNumber(result.nightPay)}원</div>
+        </div>
+        ''' : ''}
+        ${result.holidayPay > 0 ? '''
+        <div class="amount-row">
+          <div>
+            <div>휴일수당</div>
+            ${result.holidayFormula.isNotEmpty ? '<div class="amount-formula">계산: ${result.holidayFormula}</div>' : ''}
+          </div>
+          <div>${_formatNumber(result.holidayPay)}원</div>
+        </div>
+        ''' : ''}
+        ${result.weeklyHolidayPay > 0 ? '''
+        <div class="amount-row">
+          <div>
+            <div>주휴수당</div>
+            ${result.weeklyHolidayFormula.isNotEmpty ? '<div class="amount-formula">계산: ${result.weeklyHolidayFormula}</div>' : ''}
+          </div>
+          <div>${_formatNumber(result.weeklyHolidayPay)}원</div>
+        </div>
+        ''' : ''}
+        ${result.bonus > 0 ? '''
+        <div class="amount-row">
+          <div>상여금</div>
+          <div>${_formatNumber(result.bonus)}원</div>
+        </div>
+        ''' : ''}
+        <div class="amount-total payment">
+          <span>합계</span>
+          <span>${_formatNumber(result.totalPayment)}원</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="amount-section">
+      <div class="amount-title deduction">공제 항목</div>
+      <div class="amount-table">
+        ${result.nationalPension > 0 ? '''
+        <div class="amount-row">
+          <div>
+            <div>국민연금</div>
+            ${result.pensionFormula.isNotEmpty ? '<div class="amount-formula">계산: ${result.pensionFormula}</div>' : ''}
+          </div>
+          <div>${_formatNumber(result.nationalPension)}원</div>
+        </div>
+        ''' : ''}
+        ${result.healthInsurance > 0 ? '''
+        <div class="amount-row">
+          <div>
+            <div>건강보험</div>
+            ${result.healthFormula.isNotEmpty ? '<div class="amount-formula">계산: ${result.healthFormula}</div>' : ''}
+          </div>
+          <div>${_formatNumber(result.healthInsurance)}원</div>
+        </div>
+        ''' : ''}
+        ${result.longTermCare > 0 ? '''
+        <div class="amount-row">
+          <div>
+            <div>장기요양</div>
+            ${result.longTermCareFormula.isNotEmpty ? '<div class="amount-formula">계산: ${result.longTermCareFormula}</div>' : ''}
+          </div>
+          <div>${_formatNumber(result.longTermCare)}원</div>
+        </div>
+        ''' : ''}
+        ${result.employmentInsurance > 0 ? '''
+        <div class="amount-row">
+          <div>
+            <div>고용보험</div>
+            ${result.employmentFormula.isNotEmpty ? '<div class="amount-formula">계산: ${result.employmentFormula}</div>' : ''}
+          </div>
+          <div>${_formatNumber(result.employmentInsurance)}원</div>
+        </div>
+        ''' : ''}
+        ${result.incomeTax > 0 ? '''
+        <div class="amount-row">
+          <div>
+            <div>소득세</div>
+            ${result.incomeTaxFormula.isNotEmpty ? '<div class="amount-formula">계산: ${result.incomeTaxFormula}</div>' : ''}
+          </div>
+          <div>${_formatNumber(result.incomeTax)}원</div>
+        </div>
+        ''' : ''}
+        ${result.localIncomeTax > 0 ? '''
+        <div class="amount-row">
+          <div>
+            <div>지방소득세</div>
+            ${result.localTaxFormula.isNotEmpty ? '<div class="amount-formula">계산: ${result.localTaxFormula}</div>' : ''}
+          </div>
+          <div>${_formatNumber(result.localIncomeTax)}원</div>
+        </div>
+        ''' : ''}
+        <div class="amount-total deduction">
+          <span>합계</span>
+          <span>${_formatNumber(result.totalDeduction)}원</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="net-payment">
+      <span class="net-payment-label">실수령액</span>
+      <span class="net-payment-amount">${_formatNumber(result.netPayment)}원</span>
+    </div>
+  </div>
+</body>
+</html>
+''';
+  }
+
+  /// 이메일로 HTML 명세서 발송
+  static Future<void> sendPayslipEmailAsHtml({
+    required ClientModel client,
+    required WorkerModel worker,
+    required SalaryResult result,
+    required int year,
+    required int month,
+    required SmtpConfig smtpConfig,
+    required String basePath,
+    bool useClientSubfolders = true,
+  }) async {
+    if (worker.emailTo == null || worker.emailTo!.isEmpty) {
+      throw Exception('이메일 주소가 설정되지 않았습니다.');
+    }
+
+    // HTML 파일 생성
+    final htmlFile = await generatePayslipHtml(
+      client: client,
+      result: result,
+      year: year,
+      month: month,
+      basePath: basePath,
+      useClientSubfolders: useClientSubfolders,
+    );
+
+    final smtpServer = SmtpServer(
+      smtpConfig.host,
+      port: smtpConfig.port,
+      username: smtpConfig.username,
+      password: smtpConfig.password,
+      ssl: smtpConfig.useSsl,
+    );
+
+    final subject = client.emailSubjectTemplate
+        .replaceAll('{year}', year.toString())
+        .replaceAll('{month}', month.toString())
+        .replaceAll('{workerName}', worker.name);
+
+    final body = client.emailBodyTemplate
+        .replaceAll('{clientName}', client.name)
+        .replaceAll('{year}', year.toString())
+        .replaceAll('{month}', month.toString())
+        .replaceAll('{workerName}', worker.name);
+
+    final message = Message()
+      ..from = Address(smtpConfig.username)
+      ..recipients.add(worker.emailTo!)
+      ..subject = subject
+      ..text = body
+      ..attachments.add(FileAttachment(htmlFile));
+
+    if (worker.emailCc != null && worker.emailCc!.isNotEmpty) {
+      message.ccRecipients.add(worker.emailCc!);
+    }
+
+    await send(message, smtpServer);
+  }
+
+  /// 숫자 포맷팅 (천단위 콤마)
+  static String _formatNumber(int number) {
+    return number.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    );
   }
 }

@@ -71,7 +71,7 @@ class PathHelper {
     required String clientName,
     required int year,
     required int month,
-    required String fileType, // 'csv', 'pdf_register', 'pdf_payslip'
+    required String fileType, // 'csv', 'pdf_register', 'pdf_payslip', 'html_payslip'
     String? workerName,
     bool useClientSubfolders = true,
   }) {
@@ -89,6 +89,12 @@ class PathHelper {
           throw ArgumentError('workerName is required for payslip PDF');
         }
         fileName = '${workerName}_${year}년${month.toString().padLeft(2, '0')}월_급여명세서.pdf';
+        break;
+      case 'html_payslip':
+        if (workerName == null) {
+          throw ArgumentError('workerName is required for payslip HTML');
+        }
+        fileName = '${workerName}_${year}년${month.toString().padLeft(2, '0')}월_급여명세서.html';
         break;
       default:
         throw ArgumentError('Unknown file type: $fileType');

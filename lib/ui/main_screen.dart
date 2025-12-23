@@ -422,13 +422,15 @@ class _MainScreenContentState extends State<MainScreenContent> {
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
-                onPressed: () => _generateAllPdfs(provider),
+                onPressed: () => _showFormatSelectionDialog(context, provider, isBulkGeneration: true),
                 icon: const Icon(Icons.picture_as_pdf),
                 label: const Text('명세서 일괄생성'),
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
-                onPressed: provider.smtpConfig != null ? () => provider.sendAllEmails() : null,
+                onPressed: provider.smtpConfig != null 
+                    ? () => _showFormatSelectionDialog(context, provider, isBulkGeneration: false)
+                    : null,
                 icon: const Icon(Icons.email),
                 label: const Text('일괄발송'),
               ),
@@ -786,6 +788,226 @@ class _MainScreenContentState extends State<MainScreenContent> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('명세서 생성 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// PDF/HTML 형식 선택 다이얼로그
+  Future<void> _showFormatSelectionDialog(
+    BuildContext context,
+    AppProvider provider, {
+    required bool isBulkGeneration,
+  }) async {
+    String? selectedFormat = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(isBulkGeneration ? '명세서 일괄생성 형식 선택' : '이메일 발송 형식 선택'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isBulkGeneration 
+                    ? '명세서를 생성할 형식을 선택하세요:' 
+                    : '이메일로 발송할 명세서 형식을 선택하세요:',
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              // PDF 옵션
+              ListTile(
+                leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                title: const Text('PDF 형식'),
+                subtitle: const Text('전통적인 PDF 파일로 생성'),
+                onTap: () => Navigator.of(context).pop('pdf'),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // HTML 옵션
+              ListTile(
+                leading: const Icon(Icons.web, color: Colors.blue),
+                title: const Text('HTML 형식'),
+                subtitle: const Text('웹 브라우저에서 볼 수 있는 HTML 파일'),
+                onTap: () => Navigator.of(context).pop('html'),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('취소'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (selectedFormat != null) {
+      if (isBulkGeneration) {
+        // 일괄생성
+        await _generateAllPayslips(provider, selectedFormat);
+      } else {
+        // 일괄발송
+        await _sendAllEmailsWithFormat(provider, selectedFormat);
+      }
+    }
+  }
+
+  /// 명세서 일괄생성 (형식 지정)
+  Future<void> _generateAllPayslips(AppProvider provider, String format) async {
+    if (provider.selectedClient == null || provider.salaryResults.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('생성할 명세서가 없습니다')),
+      );
+      return;
+    }
+
+    // 마감된 직원 확인
+    final finalizedWorkers = provider.salaryResults.entries
+        .where((entry) => provider.isWorkerFinalized(entry.key))
+        .toList();
+
+    if (finalizedWorkers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('마감된 직원이 없습니다')),
+      );
+      return;
+    }
+
+    // 진행 상황 다이얼로그 표시
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('명세서 생성 중 (${format.toUpperCase()})'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(provider.error ?? '준비 중...'),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    try {
+      if (format == 'pdf') {
+        await provider.generateAllPdfs();
+      } else {
+        await provider.generateAllHtmlPayslips();
+      }
+      
+      if (mounted) {
+        Navigator.of(context).pop(); // 다이얼로그 닫기
+        
+        // 성공 메시지
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${format.toUpperCase()} 명세서 생성 완료!'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // 다이얼로그 닫기
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('생성 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// 이메일 일괄발송 (형식 지정)
+  Future<void> _sendAllEmailsWithFormat(AppProvider provider, String format) async {
+    if (provider.selectedClient == null || provider.salaryResults.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('발송할 명세서가 없습니다')),
+      );
+      return;
+    }
+
+    // 마감된 직원 확인
+    final finalizedWorkers = provider.salaryResults.entries
+        .where((entry) => provider.isWorkerFinalized(entry.key))
+        .toList();
+
+    if (finalizedWorkers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('마감된 직원이 없습니다')),
+      );
+      return;
+    }
+
+    // 진행 상황 다이얼로그 표시
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('이메일 발송 중 (${format.toUpperCase()})'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(provider.error ?? '준비 중...'),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    try {
+      if (format == 'pdf') {
+        await provider.sendAllEmails();
+      } else {
+        await provider.sendAllEmailsAsHtml();
+      }
+      
+      if (mounted) {
+        Navigator.of(context).pop(); // 다이얼로그 닫기
+        
+        // 성공 메시지
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${format.toUpperCase()} 형식으로 이메일 발송 완료!'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // 다이얼로그 닫기
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('발송 실패: $e'),
             backgroundColor: Colors.red,
           ),
         );
