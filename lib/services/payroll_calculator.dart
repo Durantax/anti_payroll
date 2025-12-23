@@ -4,6 +4,91 @@ import '../core/constants.dart';
 import 'income_tax_calculator.dart';
 
 class PayrollCalculator {
+  /// 월의 총 일수 계산
+  static int _getDaysInMonth(int year, int month) {
+    return DateTime(year, month + 1, 0).day;
+  }
+
+  /// 근무일수 계산 (입사일/퇴사일 고려)
+  /// 
+  /// - joinDate: 입사일 (YYYY-MM-DD 또는 null)
+  /// - resignDate: 퇴사일 (YYYY-MM-DD 또는 null)
+  /// - year, month: 급여 계산 년월
+  /// 
+  /// 반환: {workDays: 근무일수, totalDays: 해당 월 총일수, proRataRatio: 일할 계산 비율}
+  static Map<String, dynamic> calculateWorkDays({
+    String? joinDate,
+    String? resignDate,
+    required int year,
+    required int month,
+  }) {
+    final totalDays = _getDaysInMonth(year, month);
+    DateTime? join;
+    DateTime? resign;
+
+    // 입사일 파싱
+    if (joinDate != null && joinDate.isNotEmpty) {
+      try {
+        join = DateTime.parse(joinDate);
+      } catch (e) {
+        // 파싱 실패 시 무시
+      }
+    }
+
+    // 퇴사일 파싱
+    if (resignDate != null && resignDate.isNotEmpty) {
+      try {
+        resign = DateTime.parse(resignDate);
+      } catch (e) {
+        // 파싱 실패 시 무시
+      }
+    }
+
+    final monthStart = DateTime(year, month, 1);
+    final monthEnd = DateTime(year, month, totalDays);
+
+    int workDays = totalDays;
+
+    // 입사일이 해당 월 중간인 경우
+    if (join != null && 
+        join.year == year && 
+        join.month == month && 
+        join.day > 1) {
+      // 입사일부터 월말까지 근무
+      workDays = totalDays - join.day + 1;
+    }
+
+    // 퇴사일이 해당 월 중간인 경우
+    if (resign != null && 
+        resign.year == year && 
+        resign.month == month && 
+        resign.day < totalDays) {
+      // 월초부터 퇴사일까지 근무
+      if (join != null && join.year == year && join.month == month) {
+        // 입사와 퇴사가 같은 달인 경우
+        workDays = resign.day - join.day + 1;
+      } else {
+        workDays = resign.day;
+      }
+    }
+
+    // 입사 전이거나 퇴사 후인 경우
+    if (join != null && (join.year > year || (join.year == year && join.month > month))) {
+      workDays = 0; // 아직 입사하지 않음
+    }
+    if (resign != null && (resign.year < year || (resign.year == year && resign.month < month))) {
+      workDays = 0; // 이미 퇴사함
+    }
+
+    final proRataRatio = workDays / totalDays;
+
+    return {
+      'workDays': workDays,
+      'totalDays': totalDays,
+      'proRataRatio': proRataRatio,
+    };
+  }
+
   /// 급여 계산 (정규직 / 프리랜서)
   static SalaryResult calculate({
     required WorkerModel worker,
@@ -12,6 +97,14 @@ class PayrollCalculator {
   }) {
     final isFreelancer = worker.employmentType == 'freelance';
 
+    // ym에서 year와 month 추출 (예: '202501' -> year=2025, month=1)
+    int year = 0;
+    int month = 0;
+    if (monthly.ym.length >= 6) {
+      year = int.tryParse(monthly.ym.substring(0, 4)) ?? 0;
+      month = int.tryParse(monthly.ym.substring(4, 6)) ?? 0;
+    }
+
     if (isFreelancer) {
       return _calculateFreelancer(worker: worker, monthly: monthly);
     } else {
@@ -19,6 +112,8 @@ class PayrollCalculator {
         worker: worker,
         monthly: monthly,
         has5OrMoreWorkers: has5OrMoreWorkers,
+        year: year,
+        month: month,
       );
     }
   }
@@ -28,7 +123,21 @@ class PayrollCalculator {
     required WorkerModel worker,
     required MonthlyData monthly,
     required bool has5OrMoreWorkers,
+    required int year,
+    required int month,
   }) {
+    // ===== 입사일/퇴사일 기반 일할 계산 =====
+    final workDaysInfo = calculateWorkDays(
+      joinDate: worker.joinDate,
+      resignDate: worker.resignDate,
+      year: year,
+      month: month,
+    );
+    final int workDays = workDaysInfo['workDays'];
+    final int totalDays = workDaysInfo['totalDays'];
+    final double proRataRatio = workDaysInfo['proRataRatio'];
+    final bool isProRata = proRataRatio < 1.0;
+
     // ===== 통상시급 계산 =====
     // 📌 근로기준법상 통상시급 정의:
     // - "정기적·일률적·고정적으로 지급되는 임금을 시급으로 환산한 금액"
@@ -67,11 +176,19 @@ class PayrollCalculator {
     String baseSalaryFormula;
     
     if (isMonthlyWorker) {
-      baseSalary = worker.monthlySalary;
-      // 월급제는 통상시급 계산식 포함
-      final weeklyHours = monthly.weeklyHours > 0 ? monthly.weeklyHours : 40.0;
-      final monthlyHours = weeklyHours * AppConstants.weeksPerMonth;
-      baseSalaryFormula = '월급 ${formatMoney(worker.monthlySalary)}원 (통상시급: ${formatMoney(hourlyRate)}원 = ${formatMoney(worker.monthlySalary)}원 ÷ ${monthlyHours.toStringAsFixed(1)}h)';
+      // 월급제: 일할 계산 적용
+      if (isProRata) {
+        baseSalary = (worker.monthlySalary * proRataRatio).round();
+        final weeklyHours = monthly.weeklyHours > 0 ? monthly.weeklyHours : 40.0;
+        final monthlyHours = weeklyHours * AppConstants.weeksPerMonth;
+        baseSalaryFormula = '월급 ${formatMoney(worker.monthlySalary)}원 × $workDays일/$totalDays일 = ${formatMoney(baseSalary)}원 (통상시급: ${formatMoney(hourlyRate)}원)';
+      } else {
+        baseSalary = worker.monthlySalary;
+        // 월급제는 통상시급 계산식 포함
+        final weeklyHours = monthly.weeklyHours > 0 ? monthly.weeklyHours : 40.0;
+        final monthlyHours = weeklyHours * AppConstants.weeksPerMonth;
+        baseSalaryFormula = '월급 ${formatMoney(worker.monthlySalary)}원 (통상시급: ${formatMoney(hourlyRate)}원 = ${formatMoney(worker.monthlySalary)}원 ÷ ${monthlyHours.toStringAsFixed(1)}h)';
+      }
     } else {
       baseSalary = (hourlyRate * normalHours).round();
       baseSalaryFormula = '${formatMoney(hourlyRate)}원 × ${normalHours.toStringAsFixed(0)}시간';
