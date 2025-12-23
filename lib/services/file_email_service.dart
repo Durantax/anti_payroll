@@ -22,6 +22,7 @@ class FileEmailService {
     String clientName, {
     String? bizId,
     List<WorkerModel>? workers,
+    Map<int, MonthlyData>? monthlyDataMap,
     required String basePath,
     bool useClientSubfolders = true,
     required int year,
@@ -47,6 +48,8 @@ class FileEmailService {
     final headers = [
       '이름',
       '생년월일(YYMMDD)',
+      '입사일(YYYY-MM-DD)',
+      '퇴사일(YYYY-MM-DD)',
       '월급',
       '시급',
       '주소정근로시간',
@@ -74,18 +77,25 @@ class FileEmailService {
         final worker = workers[i];
         final rowIndex = 4 + i; // 5행부터 시작
         
+        // 해당 직원의 월별 데이터 가져오기
+        final monthlyData = monthlyDataMap != null && worker.id != null 
+            ? monthlyDataMap[worker.id!] 
+            : null;
+        
         final rowData = [
           worker.name,
           worker.birthDate,
+          worker.joinDate ?? '', // 입사일 (DB에서 가져오기)
+          worker.resignDate ?? '', // 퇴사일 (DB에서 가져오기)
           worker.monthlySalary.toString(),
           worker.hourlyRate.toString(),
-          '40', // 주소정근로시간 (기본 40시간)
-          worker.normalHours.toStringAsFixed(0), // 정상근로시간
-          '0', // 연장
-          '0', // 야간
-          '0', // 휴일
-          '4', // 개근주수
-          '0', // 상여
+          monthlyData?.weeklyHours.toStringAsFixed(0) ?? '40', // DB에서 가져오기 (기본값 40)
+          monthlyData?.normalHours.toStringAsFixed(0) ?? '0', // DB에서 가져오기
+          monthlyData?.overtimeHours.toStringAsFixed(0) ?? '0', // 연장
+          monthlyData?.nightHours.toStringAsFixed(0) ?? '0', // 야간
+          monthlyData?.holidayHours.toStringAsFixed(0) ?? '0', // 휴일
+          monthlyData?.weekCount.toString() ?? '4', // 개근주수
+          monthlyData?.bonus.toString() ?? '0', // 상여
           '0', // 추가수당1
           '0', // 추가수당2
           '0', // 추가공제1
@@ -165,23 +175,27 @@ class FileEmailService {
         if (name.isEmpty) continue;
 
         final birthDate = row[1]?.value?.toString() ?? '';
-        final monthlySalary = int.tryParse(row[2]?.value?.toString() ?? '0') ?? 0;
-        final hourlyRate = int.tryParse(row[3]?.value?.toString() ?? '0') ?? 0;
-        final weeklyHours = double.tryParse(row[4]?.value?.toString() ?? '40') ?? 40;
-        final normalHours = double.tryParse(row[5]?.value?.toString() ?? '209') ?? 209;
-        final overtimeHours = double.tryParse(row[6]?.value?.toString() ?? '0') ?? 0;
-        final nightHours = double.tryParse(row[7]?.value?.toString() ?? '0') ?? 0;
-        final holidayHours = double.tryParse(row[8]?.value?.toString() ?? '0') ?? 0;
-        final weekCount = int.tryParse(row[9]?.value?.toString() ?? '4') ?? 4;
-        final bonus = int.tryParse(row[10]?.value?.toString() ?? '0') ?? 0;
-        final additionalPay1 = int.tryParse(row[11]?.value?.toString() ?? '0') ?? 0;
-        final additionalPay2 = int.tryParse(row[12]?.value?.toString() ?? '0') ?? 0;
-        final additionalDeduct1 = int.tryParse(row[13]?.value?.toString() ?? '0') ?? 0;
-        final additionalDeduct2 = int.tryParse(row[14]?.value?.toString() ?? '0') ?? 0;
+        final joinDate = row[2]?.value?.toString() ?? ''; // 입사일
+        final resignDate = row[3]?.value?.toString() ?? ''; // 퇴사일
+        final monthlySalary = int.tryParse(row[4]?.value?.toString() ?? '0') ?? 0;
+        final hourlyRate = int.tryParse(row[5]?.value?.toString() ?? '0') ?? 0;
+        final weeklyHours = double.tryParse(row[6]?.value?.toString() ?? '40') ?? 40;
+        final normalHours = double.tryParse(row[7]?.value?.toString() ?? '209') ?? 209;
+        final overtimeHours = double.tryParse(row[8]?.value?.toString() ?? '0') ?? 0;
+        final nightHours = double.tryParse(row[9]?.value?.toString() ?? '0') ?? 0;
+        final holidayHours = double.tryParse(row[10]?.value?.toString() ?? '0') ?? 0;
+        final weekCount = int.tryParse(row[11]?.value?.toString() ?? '4') ?? 4;
+        final bonus = int.tryParse(row[12]?.value?.toString() ?? '0') ?? 0;
+        final additionalPay1 = int.tryParse(row[13]?.value?.toString() ?? '0') ?? 0;
+        final additionalPay2 = int.tryParse(row[14]?.value?.toString() ?? '0') ?? 0;
+        final additionalDeduct1 = int.tryParse(row[15]?.value?.toString() ?? '0') ?? 0;
+        final additionalDeduct2 = int.tryParse(row[16]?.value?.toString() ?? '0') ?? 0;
 
         workers.add({
           'name': name,
           'birthDate': birthDate,
+          'joinDate': joinDate.isNotEmpty ? joinDate : null,
+          'resignDate': resignDate.isNotEmpty ? resignDate : null,
           'monthlySalary': monthlySalary,
           'hourlyRate': hourlyRate,
           'weeklyHours': weeklyHours,

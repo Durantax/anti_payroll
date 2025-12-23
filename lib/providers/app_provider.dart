@@ -596,6 +596,8 @@ class AppProvider with ChangeNotifier {
             clientId: _selectedClient!.id,
             name: data['name'] as String,
             birthDate: data['birthDate'] as String,
+            joinDate: data['joinDate'] as String?, // 입사일 추가
+            resignDate: data['resignDate'] as String?, // 퇴사일 추가
             phoneNumber: '',
             email: '', // 추가
             employmentType: 'regular',
@@ -676,6 +678,7 @@ class AppProvider with ChangeNotifier {
         _selectedClient!.name,
         bizId: _selectedClient!.bizId,
         workers: currentWorkers,
+        monthlyDataMap: _monthlyData, // DB에서 가져온 월별 데이터 전달
         basePath: basePath,
         useClientSubfolders: useSubfolders,
         year: selectedYear,
