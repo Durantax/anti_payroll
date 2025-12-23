@@ -314,6 +314,26 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
             controller: _phoneController,
             decoration: const InputDecoration(labelText: '전화번호', border: OutlineInputBorder()),
           ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _joinDateController,
+            decoration: const InputDecoration(
+              labelText: '입사일 (YYYY-MM-DD)',
+              border: OutlineInputBorder(),
+              hintText: '2024-01-15',
+            ),
+            keyboardType: TextInputType.datetime,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _resignDateController,
+            decoration: const InputDecoration(
+              labelText: '퇴사일 (YYYY-MM-DD)',
+              border: OutlineInputBorder(),
+              hintText: '미입력 시 재직중',
+            ),
+            keyboardType: TextInputType.datetime,
+          ),
         ],
       ),
     );
@@ -325,6 +345,34 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 전월 복사 버튼
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _copyFromPreviousMonth,
+                  icon: const Icon(Icons.copy),
+                  label: const Text('전월 급여 복사'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // 두루누리 지원 체크박스
+          if (!isFreelancer)
+            Card(
+              color: Colors.orange.shade50,
+              child: CheckboxListTile(
+                title: const Text('두루누리 지원 (국민연금·고용보험 80% 지원)', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('당월만 적용됩니다. 해당 월에 두루누리 지원을 받는 경우 체크하세요.'),
+                value: _isDurunuri,
+                onChanged: (v) => setState(() => _isDurunuri = v ?? false),
+              ),
+            ),
+          if (!isFreelancer) const SizedBox(height: 16),
           const Text('━━━ 기본 정보 ━━━', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           // 💡 급여형태 자동 판단 안내
@@ -803,6 +851,94 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
     );
   }
 
+  Future<void> _copyFromPreviousMonth() async {
+    if (widget.worker?.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('신규 직원은 전월 복사를 사용할 수 없습니다')),
+      );
+      return;
+    }
+
+    final provider = context.read<AppProvider>();
+    final currentYm = provider.selectedYm;
+    
+    // 전월 계산 (예: 202501 -> 202412)
+    final year = int.parse(currentYm.substring(0, 4));
+    final month = int.parse(currentYm.substring(4, 6));
+    final prevYear = month == 1 ? year - 1 : year;
+    final prevMonth = month == 1 ? 12 : month - 1;
+    final prevYm = '$prevYear${prevMonth.toString().padLeft(2, '0')}';
+
+    try {
+      // API 호출하여 전월 데이터 가져오기
+      final prevData = await provider.apiService.getMonthlyData(
+        employeeId: widget.worker!.id!,
+        ym: prevYm,
+      );
+
+      if (prevData == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$prevYear년 ${prevMonth}월 급여 데이터가 없습니다')),
+          );
+        }
+        return;
+      }
+
+      // 전월 데이터를 현재 컨트롤러에 복사
+      setState(() {
+        _normalHoursController.text = prevData.normalHours.toString();
+        _overtimeHoursController.text = prevData.overtimeHours.toString();
+        _nightHoursController.text = prevData.nightHours.toString();
+        _holidayHoursController.text = prevData.holidayHours.toString();
+        _weeklyHoursController.text = prevData.weeklyHours.toString();
+        _weekCountController.text = prevData.weekCount.toString();
+        _bonusController.text = prevData.bonus.toString();
+        
+        // 추가 수당
+        _additionalPay1Controller.text = prevData.additionalPay1.toString();
+        _additionalPay1NameController.text = prevData.additionalPay1Name ?? '';
+        _additionalPay1IsTaxFree = prevData.additionalPay1IsTaxFree;
+        
+        _additionalPay2Controller.text = prevData.additionalPay2.toString();
+        _additionalPay2NameController.text = prevData.additionalPay2Name ?? '';
+        _additionalPay2IsTaxFree = prevData.additionalPay2IsTaxFree;
+        
+        _additionalPay3Controller.text = prevData.additionalPay3.toString();
+        _additionalPay3NameController.text = prevData.additionalPay3Name ?? '';
+        _additionalPay3IsTaxFree = prevData.additionalPay3IsTaxFree;
+        
+        // 추가 공제
+        _additionalDeduct1Controller.text = prevData.additionalDeduct1.toString();
+        _additionalDeduct1NameController.text = prevData.additionalDeduct1Name ?? '';
+        
+        _additionalDeduct2Controller.text = prevData.additionalDeduct2.toString();
+        _additionalDeduct2NameController.text = prevData.additionalDeduct2Name ?? '';
+        
+        _additionalDeduct3Controller.text = prevData.additionalDeduct3.toString();
+        _additionalDeduct3NameController.text = prevData.additionalDeduct3Name ?? '';
+        
+        // 두루누리는 월별로 다를 수 있으므로 복사하지 않음 (또는 필요시 복사)
+        // _isDurunuri = prevData.isDurunuri;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$prevYear년 ${prevMonth}월 급여를 복사했습니다'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('전월 급여 복사 실패: $e')),
+        );
+      }
+    }
+  }
+
   void _save() {
     if (!_formKey.currentState!.validate()) return;
 
@@ -835,6 +971,9 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
       taxFreeCarMaintenance: int.tryParse(_taxFreeCarMaintenanceController.text) ?? 0,
       otherTaxFree: int.tryParse(_otherTaxFreeController.text) ?? 0,
       incomeTaxRate: _incomeTaxRate,
+      // 입사/퇴사일
+      joinDate: _joinDateController.text.isNotEmpty ? _joinDateController.text : null,
+      resignDate: _resignDateController.text.isNotEmpty ? _resignDateController.text : null,
     );
 
     final provider = context.read<AppProvider>();
@@ -865,6 +1004,7 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
       additionalDeduct2Name: _additionalDeduct2NameController.text,
       additionalDeduct3: int.tryParse(_additionalDeduct3Controller.text) ?? 0,
       additionalDeduct3Name: _additionalDeduct3NameController.text,
+      isDurunuri: _isDurunuri,
     );
 
     widget.onSave(worker, monthlyData);

@@ -57,6 +57,8 @@ class AppProvider with ChangeNotifier {
   
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  
+  ApiService get apiService => _apiService;
   String? get error => _errorMessage;  // Alias for compatibility
 
   // 급여 총액 계산
