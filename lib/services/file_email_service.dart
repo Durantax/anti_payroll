@@ -44,6 +44,11 @@ class FileEmailService {
     sheet.cell(CellIndex.indexByString('A2')).value = TextCellValue('사업자등록번호');
     sheet.cell(CellIndex.indexByString('B2')).value = TextCellValue(bizId ?? '');
 
+    // 안내 문구 (3행)
+    sheet.cell(CellIndex.indexByString('A3')).value = TextCellValue('※ 안내');
+    sheet.cell(CellIndex.indexByString('B3')).value = TextCellValue('월급제: 월급란에 금액 입력 (시급란은 0 또는 빈칸)');
+    sheet.cell(CellIndex.indexByString('G3')).value = TextCellValue('시급제: 시급란에 금액 입력 (월급란은 0 또는 빈칸)');
+
     // 헤더 (4행)
     final headers = [
       '이름',
