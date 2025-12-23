@@ -310,6 +310,20 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
             },
           ),
           const SizedBox(height: 16),
+          // 사번 (읽기 전용, 서버에서 자동부여)
+          if (widget.worker?.empNo != null)
+            TextFormField(
+              initialValue: widget.worker?.empNo ?? '',
+              decoration: const InputDecoration(
+                labelText: '사번 (자동부여)',
+                border: OutlineInputBorder(),
+                filled: true,
+                fillColor: Color(0xFFF5F5F5),
+              ),
+              enabled: false, // 읽기 전용
+              style: const TextStyle(color: Colors.black54),
+            ),
+          if (widget.worker?.empNo != null) const SizedBox(height: 16),
           TextFormField(
             controller: _phoneController,
             decoration: const InputDecoration(labelText: '전화번호', border: OutlineInputBorder()),

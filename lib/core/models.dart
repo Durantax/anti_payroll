@@ -70,6 +70,7 @@ class WorkerModel {
   final int clientId;
   final String name;
   final String birthDate; // YYMMDD
+  final String? empNo; // 사번 (동명이인 관리용, DB 자동부여)
   final String? joinDate; // YYYY-MM-DD (입사일)
   final String? resignDate; // YYYY-MM-DD (퇴사일)
   final String phoneNumber;
@@ -105,6 +106,7 @@ class WorkerModel {
     required this.clientId,
     required this.name,
     required this.birthDate,
+    this.empNo, // 사번 (서버에서 자동부여)
     this.joinDate,
     this.resignDate,
     this.phoneNumber = '',
@@ -138,6 +140,7 @@ class WorkerModel {
       clientId: json['clientId'] as int,
       name: json['name'] as String? ?? '',
       birthDate: json['birthDate'] as String? ?? '',
+      empNo: json['empNo'] as String?, // 사번 (서버에서 자동부여)
       joinDate: json['joinDate'] as String?,
       resignDate: json['resignDate'] as String?,
       phoneNumber: json['phoneNumber'] as String? ?? '',
@@ -209,6 +212,9 @@ class WorkerModel {
     int? clientId,
     String? name,
     String? birthDate,
+    String? empNo,
+    String? joinDate,
+    String? resignDate,
     String? phoneNumber,
     String? email,
     String? employmentType,
@@ -238,6 +244,9 @@ class WorkerModel {
       clientId: clientId ?? this.clientId,
       name: name ?? this.name,
       birthDate: birthDate ?? this.birthDate,
+      empNo: empNo ?? this.empNo,
+      joinDate: joinDate ?? this.joinDate,
+      resignDate: resignDate ?? this.resignDate,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       email: email ?? this.email,
       employmentType: employmentType ?? this.employmentType,
@@ -354,6 +363,7 @@ class MonthlyData {
 class SalaryResult {
   final String workerName;
   final String birthDate;
+  final String? empNo; // 사번 (동명이인 구분용)
   final String employmentType;
 
   // 지급 항목
@@ -400,6 +410,7 @@ class SalaryResult {
   SalaryResult({
     required this.workerName,
     required this.birthDate,
+    this.empNo, // 사번
     required this.employmentType,
     required this.baseSalary,
     this.overtimePay = 0,

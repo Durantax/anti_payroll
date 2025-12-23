@@ -563,7 +563,7 @@ class FileEmailService {
       month: month,
       fileType: 'pdf_payslip',
       workerName: result.workerName,
-      birthDate: result.birthDate, // 동명이인 구분용
+      empNo: result.empNo, // 사번으로 동명이인 구분
       useClientSubfolders: useClientSubfolders,
     );
     
@@ -840,7 +840,7 @@ class FileEmailService {
       month: month,
       fileType: 'html_payslip',
       workerName: result.workerName,
-      birthDate: result.birthDate, // 동명이인 구분용
+      empNo: result.empNo, // 사번으로 동명이인 구분
       useClientSubfolders: useClientSubfolders,
     );
     

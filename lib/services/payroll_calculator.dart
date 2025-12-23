@@ -381,6 +381,7 @@ class PayrollCalculator {
     return SalaryResult(
       workerName: worker.name,
       birthDate: worker.birthDate,
+      empNo: worker.empNo, // 사번 추가
       employmentType: worker.employmentType,
       baseSalary: baseSalary,
       overtimePay: overtimePay,
@@ -488,6 +489,7 @@ class PayrollCalculator {
     return SalaryResult(
       workerName: worker.name,
       birthDate: worker.birthDate,
+      empNo: worker.empNo, // 사번 추가
       employmentType: worker.employmentType,
       baseSalary: baseSalary,
       overtimePay: 0,
