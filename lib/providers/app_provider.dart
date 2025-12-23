@@ -791,6 +791,37 @@ class AppProvider with ChangeNotifier {
     }
   }
 
+  Future<void> generateHtml(int workerId) async {
+    if (_selectedClient == null) return;
+
+    final result = _salaryResults[workerId];
+    if (result == null) return;
+
+    try {
+      _setLoading(true);
+      
+      // 자동 경로 사용 (기본값: OneDrive)
+      final basePath = _getValidBasePath();
+      final useSubfolders = settings?.useClientSubfolders ?? true;
+      
+      await FileEmailService.generatePayslipHtml(
+        client: _selectedClient!,
+        result: result,
+        year: selectedYear,
+        month: selectedMonth,
+        basePath: basePath,
+        useClientSubfolders: useSubfolders,
+        requireAuth: true, // 다운로드된 HTML 파일은 생년월일 인증 필요
+      );
+      _setError(null);
+    } catch (e) {
+      _setError('HTML 생성 실패: $e');
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<void> generateAllPdfs() async {
     if (_selectedClient == null || _salaryResults.isEmpty) return;
 

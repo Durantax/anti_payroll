@@ -351,8 +351,8 @@ class _MainScreenContentState extends State<MainScreenContent> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.web, size: 20, color: Colors.green),
-                      onPressed: result != null ? () => _viewPayslipWithAuth(worker, result) : null,
-                      tooltip: 'HTML 명세서 (본인인증)',
+                      onPressed: result != null ? () => _generateHtml(worker.id!) : null,
+                      tooltip: 'HTML 명세서 다운로드',
                     ),
                     IconButton(
                       icon: const Icon(Icons.picture_as_pdf, size: 20),
@@ -618,6 +618,24 @@ class _MainScreenContentState extends State<MainScreenContent> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('PDF 생성 실패: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _generateHtml(int workerId) async {
+    try {
+      await context.read<AppProvider>().generateHtml(workerId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('HTML 명세서가 생성되었습니다')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('HTML 생성 실패: $e')),
         );
       }
     }
