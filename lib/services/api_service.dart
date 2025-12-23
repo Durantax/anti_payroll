@@ -178,6 +178,7 @@ class ApiService {
       'holidayHours': data.holidayHours.toDouble(),
       'weeklyHours': data.weeklyHours.toDouble(),  // 추가: 주소정근로시간
       'weekCount': data.weekCount,  // 추가: 개근주수
+      'isDurunuri': data.isDurunuri,  // 추가: 두루누리 지원 여부
     };
 
     final response = await http.post(

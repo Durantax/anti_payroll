@@ -822,12 +822,14 @@ class FileEmailService {
     required int month,
     required String basePath,
     bool useClientSubfolders = true,
+    bool requireAuth = true, // 생년월일 인증 필요 여부 (다운로드 파일용)
   }) async {
     final htmlContent = _generateHtmlContent(
       client: client,
       result: result,
       year: year,
       month: month,
+      requireAuth: requireAuth, // 인증 모달 포함 여부 전달
     );
 
     // 자동 경로 생성
@@ -859,6 +861,7 @@ class FileEmailService {
     required SalaryResult result,
     required int year,
     required int month,
+    bool requireAuth = true, // 생년월일 인증 모달 포함 여부
   }) {
     // HTML 템플릿
     return '''
@@ -1087,7 +1090,8 @@ class FileEmailService {
   </style>
 </head>
 <body>
-  <!-- 생년월일 인증 모달 -->
+  ${requireAuth ? '''
+  <!-- 생년월일 인증 모달 (다운로드 파일만) -->
   <div class="auth-overlay" id="authOverlay">
     <div class="auth-modal">
       <h2>🔐 본인 인증</h2>
@@ -1104,9 +1108,10 @@ class FileEmailService {
       <div class="auth-error" id="authError">생년월일이 일치하지 않습니다. 다시 시도해주세요.</div>
     </div>
   </div>
+  ''' : ''}
 
-  <!-- 명세서 내용 (인증 후 표시) -->
-  <div class="container content-hidden" id="payslipContent">
+  <!-- 명세서 내용 -->
+  <div class="container${requireAuth ? ' content-hidden' : ''}" id="payslipContent">
     <div class="banner">
       <span class="banner-icon">🌐</span>
       <span class="banner-text">HTML 형식으로 표시 중 (웹 브라우저 호환)</span>
@@ -1279,6 +1284,7 @@ class FileEmailService {
     </div>
   </div>
 
+  ${requireAuth ? '''
   <script>
     // 실제 생년월일 (YYMMDD)
     const correctBirthdate = '${result.birthDate}';
@@ -1315,6 +1321,7 @@ class FileEmailService {
       }
     }
   </script>
+  ''' : ''}
 </body>
 </html>
 ''';
