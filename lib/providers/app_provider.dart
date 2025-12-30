@@ -1291,7 +1291,7 @@ class AppProvider with ChangeNotifier {
           await _loadMonthlyDataForAllWorkers();
           
           // 급여 계산
-          await calculateAllSalaries();
+          _recalculateAllSalaries();
           
           // 이메일 사용 설정된 직원 확인
           final emailWorkers = currentWorkers.where((w) => w.useEmail && w.emailTo != null && w.emailTo!.isNotEmpty).toList();
@@ -1399,8 +1399,8 @@ class AppProvider with ChangeNotifier {
         return;
       }
       
-      // 실패건이 있는지 확인 (sent가 false인 직원)
-      final failedEmployees = _sendStatus!.employees.where((e) => !e.sent).toList();
+      // 실패건이 있는지 확인 (isSent가 false인 직원)
+      final failedEmployees = _sendStatus!.employees.where((e) => !e.isSent).toList();
       final failedCount = failedEmployees.length;
       
       if (failedCount == 0) {
