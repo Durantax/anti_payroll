@@ -248,6 +248,49 @@ class ApiService {
     }
   }
 
+  /// 급여발송로그 저장 (거래처 단위 자동 발송 시)
+  Future<void> logPayrollSend({
+    required int clientId,
+    required String ym,
+    required String docType,
+    required String sendResult,
+    int? retryCount,
+    String? errorMessage,
+    String? recipient,
+    String? ccRecipient,
+    String? subject,
+    String? sendMethod,
+    String? sendPath,
+    String? executingPC,
+    String? executor,
+  }) async {
+    final body = {
+      '거래처ID': clientId,
+      '연월': ym,
+      '문서유형': docType,
+      '발송결과': sendResult,
+      '재시도횟수': retryCount ?? 0,
+      if (errorMessage != null) '오류메시지': errorMessage,
+      if (recipient != null) '수신자': recipient,
+      if (ccRecipient != null) '참조': ccRecipient,
+      if (subject != null) '제목': subject,
+      '발송방식': sendMethod ?? '자동',
+      '발송경로': sendPath ?? 'SMTP',
+      if (executingPC != null) '실행PC': executingPC,
+      if (executor != null) '실행자': executor,
+    };
+
+    final response = await http.post(
+      Uri.parse('$_serverUrl/logs/payroll-send'),
+      headers: _headers,
+      body: json.encode(body),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('급여발송로그 저장 실패: ${response.statusCode}');
+    }
+  }
+
   // ========== SMTP 설정 ==========
 
   Future<SmtpConfig?> getSmtpConfig() async {

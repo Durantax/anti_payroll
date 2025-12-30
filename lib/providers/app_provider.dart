@@ -1280,21 +1280,21 @@ class AppProvider with ChangeNotifier {
           _selectedClient = client;
           
           // 직원 목록 로드
-          await loadWorkers();
+          await loadWorkers(client.id);
           
-          if (_workers.isEmpty) {
+          if (currentWorkers.isEmpty) {
             print('[AUTO] ⚠️  "${client.name}": 직원이 없습니다. 건너뜀.');
             continue;
           }
           
           // 월별 데이터 로드
-          await loadMonthlyData();
+          await _loadMonthlyDataForAllWorkers();
           
           // 급여 계산
           await calculateAllSalaries();
           
           // 이메일 사용 설정된 직원 확인
-          final emailWorkers = _workers.where((w) => w.useEmail && w.emailTo != null && w.emailTo!.isNotEmpty).toList();
+          final emailWorkers = currentWorkers.where((w) => w.useEmail && w.emailTo != null && w.emailTo!.isNotEmpty).toList();
           
           if (emailWorkers.isEmpty) {
             print('[AUTO] ⚠️  "${client.name}": 이메일 설정된 직원이 없습니다. 건너뜀.');
@@ -1306,11 +1306,52 @@ class AppProvider with ChangeNotifier {
           // 이메일 일괄 발송
           await sendAllEmails();
           
+          // 급여발송로그 저장 (거래처 단위, 자동 발송 성공)
+          try {
+            final hamachiIP = await _getHamachiIP();
+            await _apiService.logPayrollSend(
+              clientId: client.id,
+              ym: selectedYm,
+              docType: 'slip',
+              sendResult: '성공',
+              retryCount: 0,
+              recipient: '${emailWorkers.length}명',
+              subject: '${client.name} ${selectedYear}년 ${selectedMonth}월 급여명세서',
+              sendMethod: '자동',
+              sendPath: 'SMTP',
+              executingPC: hamachiIP ?? 'Unknown',
+              executor: 'AUTO_SYSTEM',
+            );
+          } catch (e) {
+            print('[AUTO] ⚠️  급여발송로그 저장 실패: $e');
+          }
+          
           print('[AUTO] ✅ "${client.name}" 발송 완료 (${emailWorkers.length}명)');
           successCount++;
           
         } catch (e) {
           print('[AUTO] ❌ "${client.name}" 발송 실패: $e');
+          
+          // 급여발송로그 저장 (거래처 단위, 자동 발송 실패)
+          try {
+            final hamachiIP = await _getHamachiIP();
+            await _apiService.logPayrollSend(
+              clientId: client.id,
+              ym: selectedYm,
+              docType: 'slip',
+              sendResult: '실패',
+              retryCount: 0,
+              errorMessage: e.toString(),
+              subject: '${client.name} ${selectedYear}년 ${selectedMonth}월 급여명세서',
+              sendMethod: '자동',
+              sendPath: 'SMTP',
+              executingPC: hamachiIP ?? 'Unknown',
+              executor: 'AUTO_SYSTEM',
+            );
+          } catch (logError) {
+            print('[AUTO] ⚠️  급여발송로그 저장 실패: $logError');
+          }
+          
           failCount++;
         }
       }
@@ -1358,8 +1399,9 @@ class AppProvider with ChangeNotifier {
         return;
       }
       
-      // 실패건이 있는지 확인
-      final failedCount = _sendStatus!.failedList.length;
+      // 실패건이 있는지 확인 (sent가 false인 직원)
+      final failedEmployees = _sendStatus!.employees.where((e) => !e.sent).toList();
+      final failedCount = failedEmployees.length;
       
       if (failedCount == 0) {
         print('[AUTO] 재시도할 실패건이 없습니다.');
