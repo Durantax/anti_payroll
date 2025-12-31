@@ -1748,8 +1748,8 @@ def save_smtp_config(body: SmtpConfigIn):
         WHEN MATCHED THEN
             UPDATE SET Host=?, Port=?, Username=?, Password=?, UseSSL=?, UpdatedAt=SYSUTCDATETIME()
         WHEN NOT MATCHED THEN
-            INSERT (Id, Host, Port, Username, Password, UseSSL)
-            VALUES (1, ?, ?, ?, ?, ?);
+            INSERT (Id, Host, Port, Username, Password, UseSSL, UpdatedAt)
+            VALUES (1, ?, ?, ?, ?, ?, SYSUTCDATETIME());
         """
         params = (
             body.host, body.port, body.username, body.password, int(body.useSSL),
@@ -1802,8 +1802,8 @@ def save_app_settings(body: AppSettingsIn):
         WHEN MATCHED THEN
             UPDATE SET ServerUrl=?, ApiKey=?, UpdatedAt=SYSUTCDATETIME()
         WHEN NOT MATCHED THEN
-            INSERT (Id, ServerUrl, ApiKey)
-            VALUES (1, ?, ?);
+            INSERT (Id, ServerUrl, ApiKey, UpdatedAt)
+            VALUES (1, ?, ?, SYSUTCDATETIME());
         """
         params = (body.serverUrl, body.apiKey, body.serverUrl, body.apiKey)
         exec_sql(conn, sql, params)
