@@ -306,9 +306,8 @@ class _MainScreenContentState extends State<MainScreenContent> {
             DataColumn(label: Text('실수령액')),
             DataColumn(label: Text('관리')),
           ],
-          rows: workers.map((worker) {
-            final workerId = worker.id;
-            if (workerId == null) return DataRow(cells: []); // Skip workers without ID
+          rows: workers.where((worker) => worker.id != null).map((worker) {
+            final workerId = worker.id!; // Safe because we filtered null above
             
             final result = provider.getSalaryResult(workerId);
             final isFinalized = provider.isWorkerFinalized(workerId);
