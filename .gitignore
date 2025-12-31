@@ -25,8 +25,28 @@ Thumbs.db
 *.so
 *.dylib
 
+# Python virtual environment
+venv/
+env/
+ENV/
+.venv/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+
 # Database files (keep existing script.sql but ignore new ones)
 # script.sql and script_utf8.sql are already committed
 *.backup.sql
 *_backup.sql
 dump.sql
+
+# Python package distribution
+dist/
+*.egg-info/
+.eggs/
+
+# Environment variables
+.env
+.env.local

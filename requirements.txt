@@ -1,0 +1,13 @@
+# FastAPI 서버
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+
+# Database
+pyodbc==5.0.1
+
+# HTTP requests
+requests==2.31.0
+
+# Python 3.8+ 호환
+typing-extensions==4.9.0
