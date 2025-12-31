@@ -1,0 +1,16 @@
+# UI extensions and Status
+
+## Current UI Components
+1. **Main Screen**: Dashboard with Client List.
+2. **Payslip View**: Detailed payroll editor/viewer.
+3. **Settings**:
+   - App Connection Settings (URL, API Key).
+   - SMTP Configuration (Host, Port, Auth).
+
+## Implemented Features (Server Side)
+- **Safe Single-Row Configs**: AppSettings and SmtpConfig now use single-row logic (`TOP 1`) to prevent ID conflicts.
+- **Schema Validation**: Server checks for table/column existence (`거래처`, `Has5OrMoreWorkers`) before querying to prevent 500 errors.
+
+## TODO/Improvements
+- [ ] Add explicit UI feedback when DB tables are missing (currently returns empty list or default).
+- [ ] Verify "5 or more workers" toggle persists correctly in UI.

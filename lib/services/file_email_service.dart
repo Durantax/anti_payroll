@@ -1114,7 +1114,7 @@ class FileEmailService {
   <div class="container${requireAuth ? ' content-hidden' : ''}" id="payslipContent">
     <div class="banner">
       <span class="banner-icon">🌐</span>
-      <span class="banner-text">HTML 형식으로 표시 중 (웹 브라우저 호환)</span>
+      <span class="banner-text">귀하의 노고에 감사드립니다</span>
     </div>
     
     <h1 class="title">급여명세서</h1>

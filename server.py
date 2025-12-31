@@ -548,6 +548,7 @@ app = FastAPI(title="Durantax Payroll API", version="3.0.0", lifespan=lifespan)
 print("[BOOT] server file =", __file__)
 
 
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     try:
@@ -555,7 +556,6 @@ async def log_requests(request: Request, call_next):
     except Exception:
         pass
     return await call_next(request)
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -608,6 +608,9 @@ def health():
 def get_clients():
     conn = get_conn()
     try:
+        if not table_exists(conn, "dbo.거래처"):
+            return []
+
         has_5workers = column_exists(conn, "dbo.거래처", "Has5OrMoreWorkers")
         has_subject = column_exists(conn, "dbo.거래처", "EmailSubjectTemplate")
         has_body = column_exists(conn, "dbo.거래처", "EmailBodyTemplate")
@@ -678,8 +681,12 @@ def update_client(client_id: int, body: ClientUpdateIn):
         params.append(client_id)
         sql = f"UPDATE 거래처 SET {', '.join(updates)} WHERE ID = ?"
         exec_sql(conn, sql, tuple(params))
-
         return {"ok": True}
+    except Exception as e:
+        print(f"CRITICAL ERROR in save_payroll_result: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Save failed: {str(e)}")
     finally:
         conn.close()
 
@@ -692,7 +699,9 @@ def get_employees(client_id: int):
     conn = get_conn()
     try:
         if not table_exists(conn, "dbo.Employees"):
+            print("[WARN] dbo.Employees table does not exist")
             return []
+
 
         has_empno = column_exists(conn, "dbo.Employees", "EmpNo")
         has_pension = column_exists(conn, "dbo.Employees", "HasNationalPension")
@@ -829,6 +838,11 @@ def get_employees(client_id: int):
                 r["resignDate"] = None
 
         return rows
+    except Exception as e:
+        print(f"CRITICAL ERROR in get_employees: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Employee fetch failed: {str(e)}")
     finally:
         conn.close()
 
@@ -1362,7 +1376,7 @@ def save_payroll_result(data: dict):
             "NormalHours", "OvertimeHours", "NightHours", "HolidayHours", "AttendanceWeeks",
         ]
 
-        insert_vals = ["?"] * 33
+        insert_vals = ["?"] * 34
 
         params_update = [
             data["clientId"],
@@ -1479,8 +1493,18 @@ def save_payroll_result(data: dict):
             data["employeeId"], data["year"], data["month"],
         ) + tuple(params_update) + tuple(params_insert)
 
+        print(f"DEBUG_SQL_MARKERS: {sql.count('?')}")
+        print(f"DEBUG_PARAMS_LEN: {len(params)}")
+        
         exec_sql(conn, sql, params)
         return {"ok": True, "employeeId": data["employeeId"], "year": data["year"], "month": data["month"]}
+    except Exception as e:
+        import traceback
+        err_msg = traceback.format_exc()
+        print(f"CRITICAL ERROR in save_payroll_result: {e}")
+        with open("debug_error.log", "w", encoding="utf-8") as f:
+            f.write(f"Error: {e}\nTraceback:\n{err_msg}")
+        raise HTTPException(status_code=500, detail=f"Save failed: {str(e)}")
     finally:
         conn.close()
 
@@ -1606,7 +1630,7 @@ def confirm_payroll_result(result_id: int, confirmedBy: str = "admin"):
         SET IsConfirmed=1,
             ConfirmedAt=SYSUTCDATETIME(),
             ConfirmedBy=?
-        WHERE ResultId=?
+        WHERE Id=?
         """
         cnt = exec_sql(conn, sql, (confirmedBy, result_id))
         if cnt <= 0:
@@ -1634,7 +1658,7 @@ def unconfirm_payroll_result(result_id: int):
         SET IsConfirmed=0,
             ConfirmedAt=NULL,
             ConfirmedBy=NULL
-        WHERE ResultId=?
+        WHERE Id=?
         """
         cnt = exec_sql(conn, sql, (result_id,))
         if cnt <= 0:
@@ -1645,7 +1669,7 @@ def unconfirm_payroll_result(result_id: int):
         conn.close()
 
 
-@app.patch("/payroll/results/client/{client_id}/confirm-all", dependencies=[Depends(require_api_key)])
+@app.post("/payroll/results/client/{client_id}/confirm-all", dependencies=[Depends(require_api_key)])
 def confirm_all_payroll_results(client_id: int, year: int, month: int, confirmedBy: str = "admin"):
     """거래처 전체 급여 결과 일괄 확정"""
     conn = get_conn()
@@ -1671,7 +1695,7 @@ def confirm_all_payroll_results(client_id: int, year: int, month: int, confirmed
         conn.close()
 
 
-@app.get("/payroll/results/client/{client_id}/confirmation-status", response_model=List[ConfirmationStatusOut], dependencies=[Depends(require_api_key)])
+@app.get("/payroll/results/client/{client_id}/confirmation-status", dependencies=[Depends(require_api_key)])
 def get_confirmation_status(client_id: int, year: int, month: int):
     """거래처 급여 결과 확정 상태 조회"""
     conn = get_conn()
@@ -1685,7 +1709,7 @@ def get_confirmation_status(client_id: int, year: int, month: int):
 
         sql = """
         SELECT 
-            r.ResultId AS resultId,
+            r.Id AS resultId,
             r.EmployeeId AS employeeId,
             e.Name AS employeeName,
             ISNULL(r.IsConfirmed, 0) AS isConfirmed,
@@ -1701,10 +1725,10 @@ def get_confirmation_status(client_id: int, year: int, month: int):
         for r in rows:
             r["isConfirmed"] = bool(r.get("isConfirmed"))
 
-        return rows
+        return {"employees": rows}
     except Exception as e:
         print(f"⚠️ 마감 현황 조회 에러: {e}")
-        return []  # 에러 발생 시 빈 배열 반환 (500 대신)
+        return {"employees": []}
     finally:
         conn.close()
 
@@ -1722,9 +1746,9 @@ def get_smtp_config():
 
         row = fetch_one(
             conn,
-            "SELECT Host AS host, Port AS port, Username AS username, Password AS password, "
+            "SELECT TOP 1 Host AS host, Port AS port, Username AS username, Password AS password, "
             "UseSSL AS useSSL, CONVERT(NVARCHAR(19), UpdatedAt, 126) AS updatedAt "
-            "FROM dbo.SmtpConfig WHERE Id=1"
+            "FROM dbo.SmtpConfig ORDER BY Id DESC"
         )
 
         if not row:
@@ -1749,20 +1773,15 @@ def save_smtp_config(body: SmtpConfigIn):
         if not table_exists(conn, "dbo.SmtpConfig"):
             raise HTTPException(status_code=500, detail="SmtpConfig 테이블이 없습니다.")
 
-        sql = """
-        MERGE dbo.SmtpConfig AS t
-        USING (SELECT 1 AS Id) AS s
-        ON (t.Id = s.Id)
-        WHEN MATCHED THEN
-            UPDATE SET Host=?, Port=?, Username=?, Password=?, UseSSL=?, UpdatedAt=SYSUTCDATETIME()
-        WHEN NOT MATCHED THEN
-            INSERT (Id, Host, Port, Username, Password, UseSSL, UpdatedAt)
-            VALUES (1, ?, ?, ?, ?, ?, SYSUTCDATETIME());
-        """
-        params = (
-            body.host, body.port, body.username, body.password, int(body.useSSL),
-            body.host, body.port, body.username, body.password, int(body.useSSL),
-        )
+        # Check if exists
+        curr = fetch_one(conn, "SELECT TOP 1 Id FROM dbo.SmtpConfig")
+        if curr:
+            sql = "UPDATE dbo.SmtpConfig SET Host=?, Port=?, Username=?, Password=?, UseSSL=?, UpdatedAt=SYSUTCDATETIME() WHERE Id=?"
+            params = (body.host, body.port, body.username, body.password, int(body.useSSL), curr["Id"])
+        else:
+            sql = "INSERT INTO dbo.SmtpConfig (Host, Port, Username, Password, UseSSL, UpdatedAt) VALUES (?, ?, ?, ?, ?, SYSUTCDATETIME())"
+            params = (body.host, body.port, body.username, body.password, int(body.useSSL))
+
         exec_sql(conn, sql, params)
         return {"ok": True}
     finally:
@@ -1782,9 +1801,9 @@ def get_app_settings():
 
         row = fetch_one(
             conn,
-            "SELECT ServerUrl AS serverUrl, ApiKey AS apiKey, "
+            "SELECT TOP 1 ServerUrl AS serverUrl, ApiKey AS apiKey, "
             "CONVERT(NVARCHAR(19), UpdatedAt, 126) AS updatedAt "
-            "FROM dbo.AppSettings WHERE Id=1"
+            "FROM dbo.AppSettings ORDER BY Id DESC"
         )
 
         if not row:
@@ -1794,6 +1813,11 @@ def get_app_settings():
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        with open("server_error.log", "a", encoding="utf-8") as f:
+            f.write(f"\n[ERROR] /app/settings failed: {str(e)}\n")
+            f.write(traceback.format_exc())
+            f.write("-" * 20 + "\n")
         print(f"⚠️ 앱 설정 조회 에러: {e}")
         raise HTTPException(status_code=500, detail=f"앱 설정 조회 실패: {str(e)}")
     finally:
@@ -1808,17 +1832,14 @@ def save_app_settings(body: AppSettingsIn):
         if not table_exists(conn, "dbo.AppSettings"):
             raise HTTPException(status_code=500, detail="AppSettings 테이블이 없습니다.")
 
-        sql = """
-        MERGE dbo.AppSettings AS t
-        USING (SELECT 1 AS Id) AS s
-        ON (t.Id = s.Id)
-        WHEN MATCHED THEN
-            UPDATE SET ServerUrl=?, ApiKey=?, UpdatedAt=SYSUTCDATETIME()
-        WHEN NOT MATCHED THEN
-            INSERT (Id, ServerUrl, ApiKey, UpdatedAt)
-            VALUES (1, ?, ?, SYSUTCDATETIME());
-        """
-        params = (body.serverUrl, body.apiKey, body.serverUrl, body.apiKey)
+        curr = fetch_one(conn, "SELECT TOP 1 Id FROM dbo.AppSettings")
+        if curr:
+            sql = "UPDATE dbo.AppSettings SET ServerUrl=?, ApiKey=?, UpdatedAt=SYSUTCDATETIME() WHERE Id=?"
+            params = (body.serverUrl, body.apiKey, curr["Id"])
+        else:
+            sql = "INSERT INTO dbo.AppSettings (ServerUrl, ApiKey, UpdatedAt) VALUES (?, ?, SYSUTCDATETIME())"
+            params = (body.serverUrl, body.apiKey)
+            
         exec_sql(conn, sql, params)
         return {"ok": True}
     finally:

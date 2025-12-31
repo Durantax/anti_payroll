@@ -22,6 +22,7 @@ class AppProvider with ChangeNotifier {
   Map<int, SalaryResult> _salaryResults = {};
   Map<int, bool> _workerFinalizedStatus = {}; // 직원별 마감 상태 (workerId -> isConfirmed)
   Map<int, int> _payrollResultIds = {}; // 직원별 PayrollResults의 resultId (workerId -> resultId)
+  Map<int, bool> _isManualCalculation = {}; // 직원별 수동 계산 여부 (workerId -> isManual)
   
   SmtpConfig? _smtpConfig;
   AppSettings? _appSettings;
@@ -122,7 +123,7 @@ class AppProvider with ChangeNotifier {
       // 서버에서 가져온 설정이 null이거나 downloadBasePath가 비어있으면 기본 경로 설정
       if (settings == null || settings.downloadBasePath.isEmpty) {
         _appSettings = (settings ?? AppSettings(
-          serverUrl: 'http://25.2.89.129:8000',
+          serverUrl: 'http://127.0.0.1:8000',
           apiKey: '',
           downloadBasePath: '',
           useClientSubfolders: true,
@@ -414,12 +415,30 @@ class AppProvider with ChangeNotifier {
   Future<void> toggleWorkerFinalized(int workerId) async {
     final currentStatus = _workerFinalizedStatus[workerId] ?? false;
     final newStatus = !currentStatus;
-    final resultId = _payrollResultIds[workerId];
+    int? resultId = _payrollResultIds[workerId];
 
-    // resultId가 없으면 서버에 급여 결과가 저장되지 않은 것
+    // resultId가 없으면 급여를 먼저 저장
     if (resultId == null) {
-      _setError('급여 결과가 아직 저장되지 않았습니다. 월별 데이터를 입력하고 급여를 계산해주세요.');
-      return;
+      try {
+        // 급여 자동 계산 (서버에도 자동 저장됨)
+        _calculateSalary(workerId);
+        
+        // 계산 후 잠시 대기하여 서버 저장 완료 확인
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        // 마감 현황 다시 로드하여 resultId 갱신
+        await loadConfirmationStatus();
+        
+        resultId = _payrollResultIds[workerId];
+        
+        if (resultId == null) {
+          _setError('급여 결과 저장 실패. 월별 데이터를 먼저 입력해주세요.');
+          return;
+        }
+      } catch (e) {
+        _setError('급여 자동 저장 실패: $e');
+        return;
+      }
     }
 
     try {
@@ -452,6 +471,37 @@ class AppProvider with ChangeNotifier {
         .toList();
   }
 
+  /// 전체 마감
+  Future<void> confirmAllWorkers() async {
+    if (_selectedClient == null) {
+      _setError('거래처를 선택해주세요.');
+      return;
+    }
+
+    try {
+      _setLoading(true);
+      
+      final result = await _apiService.confirmAllPayrollResults(
+        clientId: _selectedClient!.id,
+        year: selectedYear,
+        month: selectedMonth,
+        confirmedBy: 'admin',
+      );
+
+      // 마감 현황 다시 로드
+      await loadConfirmationStatus();
+      
+      final confirmedCount = result['confirmed'] as int? ?? 0;
+      _setError('✅ ${confirmedCount}명 전체 마감 완료');
+      
+    } catch (e) {
+      print('전체 마감 실패: $e');
+      _setError('전체 마감 실패: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // ========== 월별 근무 데이터 ==========
 
   Future<void> updateMonthlyData(int workerId, MonthlyData data) async {
@@ -465,8 +515,11 @@ class AppProvider with ChangeNotifier {
       }
       _monthlyDataByWorker[workerId]![_selectedDate.month] = data;
 
-      // 급여 재계산
-      _calculateSalary(workerId);
+    // 월별 데이터 수정 시 자동 계산 재활성화
+    _isManualCalculation[workerId] = false;
+    
+    // 급여 재계산
+    _calculateSalary(workerId);
       notifyListeners();
     } catch (e) {
       _setError('월별 데이터 저장 실패: $e');
@@ -495,6 +548,12 @@ class AppProvider with ChangeNotifier {
 
   void _calculateSalary(int workerId) {
     if (_selectedClient == null) return;
+
+    // 수동 계산된 급여는 자동 재계산하지 않음
+    if (_isManualCalculation[workerId] == true) {
+      print('⚠️ 수동 수정된 급여입니다. 자동 재계산을 건너뜁니다: Worker $workerId');
+      return;
+    }
 
     final worker = currentWorkers.firstWhere((w) => w.id == workerId);
     final monthlyData = getMonthlyData(workerId);
@@ -574,6 +633,32 @@ class AppProvider with ChangeNotifier {
       }
     }
     notifyListeners();
+  }
+
+  /// 특정 직원의 자동 계산 재활성화 (수동 수정 플래그 제거)
+  void enableAutoCalculation(int workerId) {
+    _isManualCalculation[workerId] = false;
+    print('✅ Worker $workerId: 자동 계산 재활성화');
+    
+    // 즉시 재계산
+    _calculateSalary(workerId);
+    notifyListeners();
+  }
+
+  /// 전체 직원의 자동 계산 재활성화
+  void enableAutoCalculationForAll() {
+    _isManualCalculation.clear();
+    print('✅ 전체 직원: 자동 계산 재활성화');
+    
+    _recalculateAllSalaries();
+  }
+
+  /// 특정 직원을 수동 계산으로 표시 (외부에서 호출용)
+  void setManualCalculation(int workerId, bool isManual) {
+    _isManualCalculation[workerId] = isManual;
+    if (isManual) {
+      print('🔒 Worker $workerId: 수동 계산으로 잠금 (자동 재계산 방지)');
+    }
   }
 
   SalaryResult? getSalaryResult(int workerId) {
@@ -674,6 +759,9 @@ class AppProvider with ChangeNotifier {
 
       // 직원 목록 갱신
       await loadWorkers(_selectedClient!.id);
+      
+      // Excel 업로드 시 모든 직원의 자동 계산 재활성화
+      enableAutoCalculationForAll();
 
       _setError(null);
       notifyListeners();
@@ -1174,6 +1262,7 @@ class AppProvider with ChangeNotifier {
 
   /// 하마치 IP 가져오기 (25.x.x.x 대역)
   Future<String?> _getHamachiIP() async {
+    if (kIsWeb) return null;
     try {
       final interfaces = await NetworkInterface.list();
       

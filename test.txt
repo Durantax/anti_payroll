@@ -1,0 +1,17 @@
+[TEST LOG]
+Date: 2024-12-31
+Action: Diagnosed Server/DB Mismatch & Employee List Issue
+Result:
+1. Schema Mismatch:
+   - `AppSettings` and `SmtpConfig` had mismatched columns/identity rules.
+   - Fixed via `script_additions.sql` and `server.py` updates (TOP 1 logic).
+   - Confirmed API endpoints `/app/settings`, `/smtp/config` now return 200 OK.
+
+2. Employee List Issue:
+   - User reported empty list and 500 errors.
+   - Diagnosis revealed a "Zombie" server process (old version) was running.
+   - Action: Killed all python processes, rebuilt `payroll_api.exe`.
+   - Verification: `check_client_specific.py` confirmed valid Employee data response for "(주)국민테크".
+
+Status: RESOLVED.
+Next: User to run `dist/payroll_api.exe`.

@@ -1,0 +1,105 @@
+﻿============================================================
+DB 스키마 동기화 도구
+============================================================
+python : Traceback (m
+ost recent call last)
+:
+위치 줄:1 문자:1
++ python db_schema_sy
+nc.py 2>&1 | Out-File
+ -Encoding UTF8 schem
+a_check. ...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (Traceba   
+ ck (most recent     
+call last)::Stri    n
+g) [], RemoteEx    ce
+ption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+  File "C:\work\payro
+ll\db_schema_sync.py"
+, line 33, in get_con
+nection
+    conn = pyodbc.con
+nect(conn_str)
+pyodbc.InterfaceError
+: ('28000', "[28000] 
+[Microsoft][ODBC Driv
+er 18 for SQL Server]
+[SQL Server]사용자 'sa'이
+(가) 로그인하지 못했습니다. (184
+56) (SQLDriverConnect
+); [28000] [Microsoft
+][ODBC Driver 18 for 
+SQL Server]잘못된 연결 문자열
+ 특성입니다. (0); [28000] 
+[Microsoft][ODBC Driv
+er 18 for SQL Server]
+[SQL Server]사용자 'sa'이
+(가) 로그인하지 못했습니다. (184
+56); [28000] [Microso
+ft][ODBC Driver 18 fo
+r SQL Server]잘못된 연결 문
+자열 특성입니다. (0)")
+
+During handling of th
+e above exception, an
+other exception occur
+red:
+
+Traceback (most recen
+t call last):
+  File "C:\work\payro
+ll\db_schema_sync.py"
+, line 237, in <modul
+e>
+    check_and_sync()
+    ~~~~~~~~~~~~~~^^
+  File "C:\work\payro
+ll\db_schema_sync.py"
+, line 181, in check_
+and_sync
+    conn = get_connec
+tion()
+  File "C:\work\payro
+ll\db_schema_sync.py"
+, line 37, in get_con
+nection
+    print(f"\u274c DB
+ 연결 실패: {e}")
+    ~~~~~^^^^^^^^^^^^
+^^^^^^^^^^^^^
+UnicodeEncodeError: '
+cp949' codec can't en
+code character '\u274
+c' in position 0: ill
+egal multibyte sequen
+ce
+
+During handling of th
+e above exception, an
+other exception occur
+red:
+
+Traceback (most recen
+t call last):
+  File "C:\work\payro
+ll\db_schema_sync.py"
+, line 239, in <modul
+e>
+    print(f"\n\u274c 
+에러 발생: {e}")
+    ~~~~~^^^^^^^^^^^^
+^^^^^^^^^^^^
+UnicodeEncodeError: '
+cp949' codec can't en
+code character '\u274
+c' in position 2: ill
+egal multibyte sequen
+ce

@@ -1,6 +1,6 @@
 class AppConstants {
   // API 설정
-  static const String defaultServerUrl = 'http://25.2.89.129:8000';
+  static const String defaultServerUrl = 'http://127.0.0.1:8000';
   static const String defaultApiKey = '';
   
   // 자동 발송 시간

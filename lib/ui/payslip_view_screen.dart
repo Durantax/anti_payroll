@@ -90,8 +90,22 @@ class _PayslipViewScreenState extends State<PayslipViewScreen> {
   int get _editNetPayment => _editTotalPayment - _editTotalDeduction;
 
   Future<void> _saveChanges() async {
+    print('🔥🔥🔥 _saveChanges 함수 호출됨!');
+    
+    // 즉시 사용자에게 피드백
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('💾 저장 중...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+    
     try {
       final provider = Provider.of<AppProvider>(context, listen: false);
+      
+      print('>>> 명세서 저장 시작: ${widget.worker.name} (${widget.year}년 ${widget.month}월)');
       
       // 명세서 수정 데이터 저장
       await provider.apiService.savePayrollResult(
@@ -115,21 +129,26 @@ class _PayslipViewScreenState extends State<PayslipViewScreen> {
           'localIncomeTax': _editLocalIncomeTax,
           'totalDeduction': _editTotalDeduction,
           'netPayment': _editNetPayment,
+          // 추가 필수 필드 (monthlyData에서만 가져옴)
+          'normalHours': widget.monthlyData?.normalHours ?? 209.0,
+          'overtimeHours': widget.monthlyData?.overtimeHours ?? 0.0,
+          'nightHours': widget.monthlyData?.nightHours ?? 0.0,
+          'holidayHours': widget.monthlyData?.holidayHours ?? 0.0,
+          'weekCount': widget.monthlyData?.weekCount ?? 4,
         },
         calculatedBy: 'manual', // 수동 수정으로 표시
       );
       
-      // 수정된 데이터로 widget.salaryResult를 업데이트
-      // (읽기 전용이므로 실제로는 화면을 다시 로드해야 함)
+      print('>>> 명세서 저장 성공');
       
-      setState(() {
-        _isEditMode = false;
-      });
-
+      // 수동 수정 플래그 설정 (자동 재계산 방지)
+      provider.setManualCalculation(widget.worker.id!, true);
+      
       if (mounted) {
+        // 먼저 성공 메시지 표시
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('명세서가 수정되었습니다'),
+            content: Text('✅ 명세서가 저장되었습니다'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),
@@ -137,12 +156,16 @@ class _PayslipViewScreenState extends State<PayslipViewScreen> {
         
         // 데이터 다시 로드
         await provider.loadWorkers(provider.selectedClient!.id!);
+        
+        // 화면 닫기 (업데이트된 데이터로 다시 열도록)
+        Navigator.of(context).pop();
       }
     } catch (e) {
+      print('>>> 명세서 저장 실패: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('저장 실패: $e'),
+            content: Text('❌ 저장 실패: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -330,7 +353,7 @@ class _PayslipViewScreenState extends State<PayslipViewScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'HTML 형식으로 표시 중 (웹 브라우저 호환)',
+                            '귀하의 노고에 감사드립니다',
                             style: TextStyle(
                               color: Colors.blue.shade900,
                               fontWeight: FontWeight.w500,

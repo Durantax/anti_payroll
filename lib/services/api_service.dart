@@ -5,7 +5,7 @@ import '../core/constants.dart';
 
 class ApiService {
   // 하드코딩된 서버 URL (변경 불가)
-  static const String _serverUrl = 'http://25.2.89.129:8000';
+  static const String _serverUrl = 'http://127.0.0.1:8000';
   static const String _apiKey = '';
 
   Map<String, String> get _headers => {

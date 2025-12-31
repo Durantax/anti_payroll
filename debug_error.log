@@ -1,0 +1,10 @@
+Error: ('42S22', "[42S22] [Microsoft][ODBC Driver 18 for SQL Server][SQL Server]열 이름 'CalculatedAt'이(가) 유효하지 않습니다. (207) (SQLExecDirectW); [42S22] [Microsoft][ODBC Driver 18 for SQL Server][SQL Server]문을 준비할 수 없습니다. (8180)")
+Traceback:
+Traceback (most recent call last):
+  File "C:\work\payroll\server.py", line 1499, in save_payroll_result
+    exec_sql(conn, sql, params)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\work\payroll\server.py", line 91, in exec_sql
+    cur.execute(sql, params)
+    ~~~~~~~~~~~^^^^^^^^^^^^^
+pyodbc.ProgrammingError: ('42S22', "[42S22] [Microsoft][ODBC Driver 18 for SQL Server][SQL Server]열 이름 'CalculatedAt'이(가) 유효하지 않습니다. (207) (SQLExecDirectW); [42S22] [Microsoft][ODBC Driver 18 for SQL Server][SQL Server]문을 준비할 수 없습니다. (8180)")
