@@ -1397,13 +1397,14 @@ class AppProvider with ChangeNotifier {
       // 발송 상태 로드
       await loadSendStatus();
       
-      if (_sendStatus == null) {
+      final sendStatus = _sendStatus;
+      if (sendStatus == null) {
         print('[AUTO] 발송 상태 정보가 없습니다.');
         return;
       }
       
       // 실패건이 있는지 확인 (isSent가 false인 직원)
-      final failedEmployees = _sendStatus!.employees.where((e) => !e.isSent).toList();
+      final failedEmployees = sendStatus.employees.where((e) => !e.isSent).toList();
       final failedCount = failedEmployees.length;
       
       if (failedCount == 0) {
@@ -1429,9 +1430,10 @@ class AppProvider with ChangeNotifier {
   }
 
   Future<void> retryFailedEmails() async {
-    if (_sendStatus == null) return;
+    final sendStatus = _sendStatus;
+    if (sendStatus == null) return;
 
-    final failedEmployees = _sendStatus!.employees
+    final failedEmployees = sendStatus.employees
         .where((e) => e.useEmail && e.lastStatus == 'failed' && e.emailTo != null)
         .toList();
 

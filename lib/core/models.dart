@@ -137,7 +137,7 @@ class WorkerModel {
   factory WorkerModel.fromJson(Map<String, dynamic> json) {
     return WorkerModel(
       id: json['employeeId'] as int?,
-      clientId: json['clientId'] as int,
+      clientId: (json['clientId'] as int?) ?? 0,
       name: json['name'] as String? ?? '',
       birthDate: json['birthDate'] as String? ?? '',
       empNo: json['empNo'] as String?, // 사번 (서버에서 자동부여)
