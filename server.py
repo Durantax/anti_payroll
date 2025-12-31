@@ -1702,6 +1702,9 @@ def get_confirmation_status(client_id: int, year: int, month: int):
             r["isConfirmed"] = bool(r.get("isConfirmed"))
 
         return rows
+    except Exception as e:
+        print(f"⚠️ 마감 현황 조회 에러: {e}")
+        return []  # 에러 발생 시 빈 배열 반환 (500 대신)
     finally:
         conn.close()
 
@@ -1715,7 +1718,7 @@ def get_smtp_config():
     conn = get_conn()
     try:
         if not table_exists(conn, "dbo.SmtpConfig"):
-            raise HTTPException(status_code=404, detail="SmtpConfig 테이블이 없습니다.")
+            raise HTTPException(status_code=404, detail="SmtpConfig 테이블이 없습니다. init_db.py를 실행하세요.")
 
         row = fetch_one(
             conn,
@@ -1725,10 +1728,15 @@ def get_smtp_config():
         )
 
         if not row:
-            raise HTTPException(status_code=404, detail="SMTP 설정이 없습니다.")
+            raise HTTPException(status_code=404, detail="SMTP 설정이 없습니다. init_db.py를 실행하세요.")
 
         row["useSSL"] = bool(row["useSSL"])
         return row
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"⚠️ SMTP 설정 조회 에러: {e}")
+        raise HTTPException(status_code=500, detail=f"SMTP 설정 조회 실패: {str(e)}")
     finally:
         conn.close()
 
@@ -1770,7 +1778,7 @@ def get_app_settings():
     conn = get_conn()
     try:
         if not table_exists(conn, "dbo.AppSettings"):
-            raise HTTPException(status_code=404, detail="AppSettings 테이블이 없습니다.")
+            raise HTTPException(status_code=404, detail="AppSettings 테이블이 없습니다. init_db.py를 실행하세요.")
 
         row = fetch_one(
             conn,
@@ -1780,9 +1788,14 @@ def get_app_settings():
         )
 
         if not row:
-            raise HTTPException(status_code=404, detail="앱 설정이 없습니다.")
+            raise HTTPException(status_code=404, detail="앱 설정이 없습니다. init_db.py를 실행하세요.")
 
         return row
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"⚠️ 앱 설정 조회 에러: {e}")
+        raise HTTPException(status_code=500, detail=f"앱 설정 조회 실패: {str(e)}")
     finally:
         conn.close()
 

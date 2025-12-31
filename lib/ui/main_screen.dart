@@ -163,11 +163,11 @@ class _MainScreenContentState extends State<MainScreenContent> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '명세서: ${provider.selectedClient!.slipSendDay ?? "-"}일',
+                    '명세서: ${provider.selectedClient?.slipSendDay ?? "-"}일',
                     style: const TextStyle(fontSize: 11),
                   ),
                   Text(
-                    '급여대장: ${provider.selectedClient!.registerSendDay ?? "-"}일',
+                    '급여대장: ${provider.selectedClient?.registerSendDay ?? "-"}일',
                     style: const TextStyle(fontSize: 11),
                   ),
                 ],
@@ -218,7 +218,12 @@ class _MainScreenContentState extends State<MainScreenContent> {
           const SizedBox(width: 16),
           if (provider.selectedClient != null)
             ElevatedButton.icon(
-              onPressed: () => _showClientSettings(provider.selectedClient!),
+              onPressed: () {
+                final client = provider.selectedClient;
+                if (client != null) {
+                  _showClientSettings(client);
+                }
+              },
               icon: const Icon(Icons.business_center),
               label: const Text('거래처 설정'),
             ),
@@ -643,6 +648,9 @@ class _MainScreenContentState extends State<MainScreenContent> {
 
   void _viewPayslip(WorkerModel worker, SalaryResult result) {
     final provider = context.read<AppProvider>();
+    final client = provider.selectedClient;
+    if (client == null) return;
+    
     final monthlyData = provider.getMonthlyData(worker.id!);
     Navigator.push(
       context,
@@ -653,9 +661,9 @@ class _MainScreenContentState extends State<MainScreenContent> {
           monthlyData: monthlyData,
           year: provider.selectedYear,
           month: provider.selectedMonth,
-          clientName: provider.selectedClient!.name,
-          bizId: provider.selectedClient!.bizId,
-          clientId: provider.selectedClient!.id!,
+          clientName: client.name,
+          bizId: client.bizId,
+          clientId: client.id!,
           requireBirthdateAuth: false,
         ),
       ),
@@ -664,6 +672,9 @@ class _MainScreenContentState extends State<MainScreenContent> {
 
   void _viewPayslipWithAuth(WorkerModel worker, SalaryResult result) {
     final provider = context.read<AppProvider>();
+    final client = provider.selectedClient;
+    if (client == null) return;
+    
     final monthlyData = provider.getMonthlyData(worker.id!);
     Navigator.push(
       context,
@@ -674,9 +685,9 @@ class _MainScreenContentState extends State<MainScreenContent> {
           monthlyData: monthlyData,
           year: provider.selectedYear,
           month: provider.selectedMonth,
-          clientName: provider.selectedClient!.name,
-          bizId: provider.selectedClient!.bizId,
-          clientId: provider.selectedClient!.id!,
+          clientName: client.name,
+          bizId: client.bizId,
+          clientId: client.id!,
           requireBirthdateAuth: true,
         ),
       ),
@@ -1042,11 +1053,11 @@ class _MainScreenContentState extends State<MainScreenContent> {
     String folderPath = basePath;
     
     // 거래처 하위 폴더 사용 설정이 켜져 있고, 선택된 거래처가 있으면 해당 폴더로 이동
-    if ((provider.settings?.useClientSubfolders ?? true) && 
-        provider.selectedClient != null) {
+    final client = provider.selectedClient;
+    if ((provider.settings?.useClientSubfolders ?? true) && client != null) {
       folderPath = PathHelper.getClientFolderPath(
         basePath: basePath,
-        clientName: provider.selectedClient!.name,
+        clientName: client.name,
         year: provider.selectedYear,
         month: provider.selectedMonth,
       );
