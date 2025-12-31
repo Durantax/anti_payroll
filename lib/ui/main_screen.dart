@@ -307,15 +307,17 @@ class _MainScreenContentState extends State<MainScreenContent> {
             DataColumn(label: Text('관리')),
           ],
           rows: workers.map((worker) {
-            final result = provider.getSalaryResult(worker.id!);
-
-            final isFinalized = provider.isWorkerFinalized(worker.id!);
+            final workerId = worker.id;
+            if (workerId == null) return DataRow(cells: []); // Skip workers without ID
+            
+            final result = provider.getSalaryResult(workerId);
+            final isFinalized = provider.isWorkerFinalized(workerId);
             
             return DataRow(cells: [
               DataCell(
                 Checkbox(
                   value: isFinalized,
-                  onChanged: (value) async => await provider.toggleWorkerFinalized(worker.id!),
+                  onChanged: (value) async => await provider.toggleWorkerFinalized(workerId),
                 ),
               ),
               DataCell(Text(worker.name)),
@@ -713,6 +715,8 @@ class _MainScreenContentState extends State<MainScreenContent> {
   }
 
   Future<void> _deleteWorker(WorkerModel worker) async {
+    if (worker.id == null) return;
+    
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
