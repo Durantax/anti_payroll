@@ -24,3 +24,9 @@ Thumbs.db
 *.dll
 *.so
 *.dylib
+
+# Database files (keep existing script.sql but ignore new ones)
+# script.sql and script_utf8.sql are already committed
+*.backup.sql
+*_backup.sql
+dump.sql
