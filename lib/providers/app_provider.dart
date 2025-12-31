@@ -50,8 +50,11 @@ class AppProvider with ChangeNotifier {
   int get selectedMonth => _selectedDate.month;
   String get selectedYm => formatYm(_selectedDate);
   
-  List<WorkerModel> get currentWorkers => 
-      _selectedClient != null ? _workersByClient[_selectedClient!.id] ?? [] : [];
+  List<WorkerModel> get currentWorkers {
+    final client = _selectedClient;
+    if (client == null || client.id == null) return [];
+    return _workersByClient[client.id!] ?? [];
+  }
   
   Map<int, SalaryResult> get salaryResults => _salaryResults;
   
