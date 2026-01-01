@@ -1,12 +1,4 @@
-Error in upsert_employee: ('22007', '[22007] [Microsoft][ODBC Driver 18 for SQL Server][SQL Server]문자열을 날짜 및/또는 시간으로 변환하지 못했습니다. (241) (SQLExecDirectW)')
-Traceback:
-Traceback (most recent call last):
-  File "C:\work\payroll\server.py", line 1013, in upsert_employee
-    cur.execute(sql, params)
-    ~~~~~~~~~~~^^^^^^^^^^^^^
-pyodbc.DataError: ('22007', '[22007] [Microsoft][ODBC Driver 18 for SQL Server][SQL Server]문자열을 날짜 및/또는 시간으로 변환하지 못했습니다. (241) (SQLExecDirectW)')
-
-SQL:
+SQL Statement:
 
         MERGE dbo.Employees AS t
         USING (SELECT ? AS ClientId, ? AS Name, ? AS BirthDate) AS s
@@ -17,3 +9,7 @@ SQL:
             INSERT (ClientId, Name, BirthDate, EmploymentType, SalaryType, BaseSalary, HourlyRate, NormalHours, FoodAllowance, CarAllowance, EmailTo, EmailCc, UseEmail, HasNationalPension, HasHealthInsurance, HasEmploymentInsurance, HealthInsuranceBasis, PensionInsurableWage, JoinDate, ResignDate, TaxDependents, ChildrenCount, TaxFreeMeal, TaxFreeCarMaintenance, OtherTaxFree, IncomeTaxRate)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         
+
+Insert Columns: ['ClientId', 'Name', 'BirthDate', 'EmploymentType', 'SalaryType', 'BaseSalary', 'HourlyRate', 'NormalHours', 'FoodAllowance', 'CarAllowance', 'EmailTo', 'EmailCc', 'UseEmail', 'HasNationalPension', 'HasHealthInsurance', 'HasEmploymentInsurance', 'HealthInsuranceBasis', 'PensionInsurableWage', 'JoinDate', 'ResignDate', 'TaxDependents', 'ChildrenCount', 'TaxFreeMeal', 'TaxFreeCarMaintenance', 'OtherTaxFree', 'IncomeTaxRate']
+Update Sets: ['EmploymentType=?', 'SalaryType=?', 'BaseSalary=?', 'HourlyRate=?', 'NormalHours=?', 'FoodAllowance=?', 'CarAllowance=?', 'EmailTo=?', 'EmailCc=?', 'UseEmail=?', 'HasNationalPension=?', 'HasHealthInsurance=?', 'HasEmploymentInsurance=?', 'HealthInsuranceBasis=?', 'PensionInsurableWage=?', 'JoinDate=?', 'ResignDate=?', 'TaxDependents=?', 'ChildrenCount=?', 'TaxFreeMeal=?', 'TaxFreeCarMaintenance=?', 'OtherTaxFree=?', 'IncomeTaxRate=?', 'UpdatedAt=SYSUTCDATETIME()']
+Params count: 52

@@ -1,0 +1,17 @@
+SQL Statement:
+
+        MERGE dbo.PayrollResults AS target
+        USING (SELECT ? AS EmployeeId, ? AS Year, ? AS Month) AS source
+        ON target.EmployeeId = source.EmployeeId 
+            AND target.Year = source.Year 
+            AND target.Month = source.Month
+        WHEN MATCHED THEN
+            UPDATE SET ClientId = ?, BaseSalary = ?, OvertimeAllowance = ?, NightAllowance = ?, HolidayAllowance = ?, WeeklyHolidayPay = ?, Bonus = ?, AdditionalAllowance1Name = ?, AdditionalAllowance1Amount = ?, AdditionalAllowance2Name = ?, AdditionalAllowance2Amount = ?, TotalPayment = ?, NationalPension = ?, HealthInsurance = ?, LongTermCare = ?, EmploymentInsurance = ?, IncomeTax = ?, LocalIncomeTax = ?, AdditionalDeduction1Name = ?, AdditionalDeduction1Amount = ?, AdditionalDeduction2Name = ?, AdditionalDeduction2Amount = ?, TotalDeduction = ?, NetPay = ?, PaymentFormulas = ?, DeductionFormulas = ?, NormalHours = ?, OvertimeHours = ?, NightHours = ?, HolidayHours = ?, AttendanceWeeks = ?, CalculatedAt = SYSUTCDATETIME(), CalculatedBy = ?
+        WHEN NOT MATCHED THEN
+            INSERT (EmployeeId, ClientId, Year, Month, BaseSalary, OvertimeAllowance, NightAllowance, HolidayAllowance, WeeklyHolidayPay, Bonus, AdditionalAllowance1Name, AdditionalAllowance1Amount, AdditionalAllowance2Name, AdditionalAllowance2Amount, TotalPayment, NationalPension, HealthInsurance, LongTermCare, EmploymentInsurance, IncomeTax, LocalIncomeTax, AdditionalDeduction1Name, AdditionalDeduction1Amount, AdditionalDeduction2Name, AdditionalDeduction2Amount, TotalDeduction, NetPay, PaymentFormulas, DeductionFormulas, NormalHours, OvertimeHours, NightHours, HolidayHours, AttendanceWeeks, CalculatedBy)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        
+
+Insert Columns: ['EmployeeId', 'ClientId', 'Year', 'Month', 'BaseSalary', 'OvertimeAllowance', 'NightAllowance', 'HolidayAllowance', 'WeeklyHolidayPay', 'Bonus', 'AdditionalAllowance1Name', 'AdditionalAllowance1Amount', 'AdditionalAllowance2Name', 'AdditionalAllowance2Amount', 'TotalPayment', 'NationalPension', 'HealthInsurance', 'LongTermCare', 'EmploymentInsurance', 'IncomeTax', 'LocalIncomeTax', 'AdditionalDeduction1Name', 'AdditionalDeduction1Amount', 'AdditionalDeduction2Name', 'AdditionalDeduction2Amount', 'TotalDeduction', 'NetPay', 'PaymentFormulas', 'DeductionFormulas', 'NormalHours', 'OvertimeHours', 'NightHours', 'HolidayHours', 'AttendanceWeeks', 'CalculatedBy']
+Update Sets: ['ClientId = ?', 'BaseSalary = ?', 'OvertimeAllowance = ?', 'NightAllowance = ?', 'HolidayAllowance = ?', 'WeeklyHolidayPay = ?', 'Bonus = ?', 'AdditionalAllowance1Name = ?', 'AdditionalAllowance1Amount = ?', 'AdditionalAllowance2Name = ?', 'AdditionalAllowance2Amount = ?', 'TotalPayment = ?', 'NationalPension = ?', 'HealthInsurance = ?', 'LongTermCare = ?', 'EmploymentInsurance = ?', 'IncomeTax = ?', 'LocalIncomeTax = ?', 'AdditionalDeduction1Name = ?', 'AdditionalDeduction1Amount = ?', 'AdditionalDeduction2Name = ?', 'AdditionalDeduction2Amount = ?', 'TotalDeduction = ?', 'NetPay = ?', 'PaymentFormulas = ?', 'DeductionFormulas = ?', 'NormalHours = ?', 'OvertimeHours = ?', 'NightHours = ?', 'HolidayHours = ?', 'AttendanceWeeks = ?', 'CalculatedAt = SYSUTCDATETIME()', 'CalculatedBy = ?']
+Params count: 70

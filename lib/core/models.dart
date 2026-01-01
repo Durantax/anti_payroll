@@ -197,6 +197,8 @@ class WorkerModel {
       'taxFreeCarMaintenance': taxFreeCarMaintenance,
       'otherTaxFree': otherTaxFree,
       'incomeTaxRate': incomeTaxRate,
+      'joinDate': joinDate,
+      'resignDate': resignDate,
     };
     
     // employeeId가 있으면 포함 (업데이트 시 필수)

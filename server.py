@@ -928,15 +928,19 @@ def upsert_employee(body: EmployeeUpsertIn):
             update_sets.append("JoinDate=?")
             insert_cols.append("JoinDate")
             insert_vals.append("?")
-            params_update.append(body.joinDate)
-            params_insert.append(body.joinDate)
+            # 빈 문자열을 None으로 변환
+            join_date_val = body.joinDate if body.joinDate and body.joinDate.strip() else None
+            params_update.append(join_date_val)
+            params_insert.append(join_date_val)
 
         if has_resign_date:
             update_sets.append("ResignDate=?")
             insert_cols.append("ResignDate")
             insert_vals.append("?")
-            params_update.append(body.resignDate)
-            params_insert.append(body.resignDate)
+            # 빈 문자열을 None으로 변환
+            resign_date_val = body.resignDate if body.resignDate and body.resignDate.strip() else None
+            params_update.append(resign_date_val)
+            params_insert.append(resign_date_val)
 
         if has_tax_dependents:
             update_sets.append("TaxDependents=?")
@@ -980,6 +984,7 @@ def upsert_employee(body: EmployeeUpsertIn):
             params_update.append(body.incomeTaxRate)
             params_insert.append(body.incomeTaxRate)
 
+
         update_sets.append("UpdatedAt=SYSUTCDATETIME()")
 
         sql = f"""
@@ -990,16 +995,38 @@ def upsert_employee(body: EmployeeUpsertIn):
             UPDATE SET {', '.join(update_sets)}
         WHEN NOT MATCHED THEN
             INSERT ({', '.join(insert_cols)})
-            VALUES ({', '.join(insert_vals)})
-        OUTPUT inserted.EmployeeId AS employeeId;
+            VALUES ({', '.join(insert_vals)});
         """
+
 
         params = (body.clientId, body.name, body.birthDate) + tuple(params_update) + tuple(params_insert)
 
-        cur = conn.cursor()
-        cur.execute(sql, params)
-        out = cur.fetchone()
-        conn.commit()
+        try:
+            # Log SQL for debugging
+            with open("debug_employee_sql.log", "w", encoding="utf-8") as f:
+                f.write(f"SQL Statement:\n{sql}\n\n")
+                f.write(f"Insert Columns: {insert_cols}\n")
+                f.write(f"Update Sets: {update_sets}\n")
+                f.write(f"Params count: {len(params)}\n")
+            
+            cur = conn.cursor()
+            cur.execute(sql, params)
+            conn.commit()
+            
+            # Get EmployeeId via SELECT after MERGE
+            select_id_sql = """
+                SELECT EmployeeId FROM dbo.Employees 
+                WHERE ClientId=? AND Name=? AND BirthDate=?
+            """
+            cur.execute(select_id_sql, (body.clientId, body.name, body.birthDate))
+            out = cur.fetchone()
+        except Exception as e:
+            import traceback
+            err_msg = traceback.format_exc()
+            print(f"CRITICAL ERROR in upsert_employee: {e}")
+            with open("debug_error.log", "w", encoding="utf-8") as f:
+                f.write(f"Error in upsert_employee: {e}\nTraceback:\n{err_msg}\nSQL:\n{sql}\n")
+            raise HTTPException(status_code=500, detail=f"Employee upsert failed: {str(e)}")
 
         if not out:
             raise HTTPException(status_code=500, detail="Upsert failed")
@@ -1493,8 +1520,18 @@ def save_payroll_result(data: dict):
             data["employeeId"], data["year"], data["month"],
         ) + tuple(params_update) + tuple(params_insert)
 
+
         print(f"DEBUG_SQL_MARKERS: {sql.count('?')}")
         print(f"DEBUG_PARAMS_LEN: {len(params)}")
+        print(f"DEBUG_INSERT_COLS: {insert_cols}")
+        print(f"DEBUG_UPDATE_SETS_COUNT: {len(update_sets)}")
+        
+        # Log full SQL for debugging
+        with open("debug_sql.log", "w", encoding="utf-8") as f:
+            f.write(f"SQL Statement:\n{sql}\n\n")
+            f.write(f"Insert Columns: {insert_cols}\n")
+            f.write(f"Update Sets: {update_sets}\n")
+            f.write(f"Params count: {len(params)}\n")
         
         exec_sql(conn, sql, params)
         return {"ok": True, "employeeId": data["employeeId"], "year": data["year"], "month": data["month"]}
@@ -1698,6 +1735,7 @@ def confirm_all_payroll_results(client_id: int, year: int, month: int, confirmed
 @app.get("/payroll/results/client/{client_id}/confirmation-status", dependencies=[Depends(require_api_key)])
 def get_confirmation_status(client_id: int, year: int, month: int):
     """거래처 급여 결과 확정 상태 조회"""
+    print(f"🔍 마감 현황 조회: ClientId={client_id}, Year={year}, Month={month}")
     conn = get_conn()
     try:
         if not table_exists(conn, "dbo.PayrollResults"):
@@ -1910,6 +1948,11 @@ def clients_send_status(client_id: int, ym: str, docType: Literal["slip", "regis
                 employees=employees,
             )
 
+        # ym을 year, month로 분리
+        year_str, month_str = ym.split('-')
+        year = int(year_str)
+        month = int(month_str)
+        
         rows = fetch_all(
             conn,
             r"""
@@ -1920,10 +1963,17 @@ def clients_send_status(client_id: int, ym: str, docType: Literal["slip", "regis
                 e.UseEmail AS useEmail,
                 e.EmailTo AS emailTo,
                 e.EmailCc AS emailCc,
+                pr.IsConfirmed AS isConfirmed,
                 ml.Status AS lastStatus,
                 ml.ErrorMessage AS lastError,
                 CONVERT(NVARCHAR(19), ml.SentAt, 126) AS lastSentAt
             FROM dbo.Employees e
+            INNER JOIN dbo.PayrollResults pr 
+                ON pr.EmployeeId = e.EmployeeId 
+                AND pr.ClientId = e.ClientId
+                AND pr.Year = ?
+                AND pr.Month = ?
+                AND ISNULL(pr.IsConfirmed, 0) = 1
             OUTER APPLY (
                 SELECT TOP 1 Status, ErrorMessage, SentAt
                 FROM dbo.PayrollMailLog m
@@ -1936,7 +1986,7 @@ def clients_send_status(client_id: int, ym: str, docType: Literal["slip", "regis
             WHERE e.ClientId = ?
             ORDER BY e.Name
             """,
-            (ym, docType, client_id),
+            (year, month, ym, docType, client_id),
         )
 
         employees: List[ClientSendStatusEmployeeOut] = []

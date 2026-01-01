@@ -20,13 +20,11 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "Playtest123!")
 def get_connection():
     """DB 연결"""
     conn_str = (
-        "DRIVER={ODBC Driver 18 for SQL Server};"
+        f"DRIVER={{ODBC Driver 18 for SQL Server}};"
         f"SERVER={DB_SERVER},{DB_PORT};"
         f"DATABASE={DB_NAME};"
         f"UID={DB_USER};PWD={DB_PASSWORD};"
-        "TrustServerCertificate=YES;"
-        "Encrypt=YES;"
-        "Connection Timeout=5;"
+        "TrustServerCertificate=YES"
     )
     
     try:

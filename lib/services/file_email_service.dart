@@ -38,18 +38,44 @@ class FileEmailService {
       excel.delete('Sheet1');
     }
 
-    // 거래처 정보
+    // 거래처 정보 (굵은 글씨)
+    var titleStyle = CellStyle(
+      bold: true,
+      fontSize: 12,
+      backgroundColorHex: ExcelColor.fromHexString('#E8F4F8'),
+    );
+    
     sheet.cell(CellIndex.indexByString('A1')).value = TextCellValue('거래처명');
+    sheet.cell(CellIndex.indexByString('A1')).cellStyle = titleStyle;
     sheet.cell(CellIndex.indexByString('B1')).value = TextCellValue(clientName);
+    
     sheet.cell(CellIndex.indexByString('A2')).value = TextCellValue('사업자등록번호');
+    sheet.cell(CellIndex.indexByString('A2')).cellStyle = titleStyle;
     sheet.cell(CellIndex.indexByString('B2')).value = TextCellValue(bizId ?? '');
-
-    // 안내 문구 (3행)
-    sheet.cell(CellIndex.indexByString('A3')).value = TextCellValue('※ 안내');
-    sheet.cell(CellIndex.indexByString('B3')).value = TextCellValue('월급제: 월급란에 금액 입력 (시급란은 0 또는 빈칸)');
-    sheet.cell(CellIndex.indexByString('G3')).value = TextCellValue('시급제: 시급란에 금액 입력 (월급란은 0 또는 빈칸)');
-
-    // 헤더 (4행)
+    
+    sheet.cell(CellIndex.indexByString('A3')).value = TextCellValue('귀속 년월');
+    sheet.cell(CellIndex.indexByString('A3')).cellStyle = titleStyle;
+    sheet.cell(CellIndex.indexByString('B3')).value = TextCellValue('${year}년 ${month}월');
+    
+    // 안내 문구 (4행)
+    var infoStyle = CellStyle(
+      fontSize: 10,
+      backgroundColorHex: ExcelColor.fromHexString('#FFF9E6'),
+    );
+    sheet.cell(CellIndex.indexByString('A4')).value = TextCellValue('※ 안내');
+    sheet.cell(CellIndex.indexByString('A4')).cellStyle = infoStyle;
+    sheet.cell(CellIndex.indexByString('B4')).value = TextCellValue('월급제: 월급란에 금액 입력 (시급란은 0 또는 빈칸)');
+    sheet.cell(CellIndex.indexByString('G4')).value = TextCellValue('시급제: 시급란에 금액 입력 (월급란은 0 또는 빈칸)');
+    
+    // 헤더 (5행 - 스타일 적용)
+    var headerStyle = CellStyle(
+      bold: true,
+      fontSize: 11,
+      backgroundColorHex: ExcelColor.fromHexString('#4472C4'),
+      fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
+      horizontalAlign: HorizontalAlign.Center,
+    );
+    
     final headers = [
       '이름',
       '생년월일(YYMMDD)',
@@ -71,42 +97,64 @@ class FileEmailService {
     ];
 
     for (var i = 0; i < headers.length; i++) {
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 3))
-          .value = TextCellValue(headers[i]);
+      var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 4));
+      cell.value = TextCellValue(headers[i]);
+      cell.cellStyle = headerStyle;
     }
 
+    // 거래처 입력 필드 스타일 (주황색 배경)
+    var userInputStyle = CellStyle(
+      backgroundColorHex: ExcelColor.fromHexString('#FFE5CC'),
+    );
+    
     // 직원 기본 정보 자동 입력 (이름, 생년월일, 입사일, 퇴사일, 월급, 시급, 주소정근로시간)
     // 정상근로시간부터는 매달 변경되므로 사용자가 직접 입력
     if (workers != null && workers.isNotEmpty) {
       for (var i = 0; i < workers.length; i++) {
         final worker = workers[i];
-        final rowIndex = 4 + i; // 5행부터 시작
+        final rowIndex = 5 + i; // 6행부터 시작
         
         // 해당 직원의 월별 데이터 가져오기 (주소정근로시간용)
         final monthlyData = monthlyDataMap != null && worker.id != null 
             ? monthlyDataMap[worker.id!] 
             : null;
         
-        // 기본 정보만 입력 (컬럼 0~6)
-        final basicInfo = [
-          worker.name,                                                    // 0: 이름
-          worker.birthDate,                                               // 1: 생년월일
-          worker.joinDate ?? '',                                          // 2: 입사일
-          worker.resignDate ?? '',                                        // 3: 퇴사일
-          worker.monthlySalary.toString(),                               // 4: 월급
-          worker.hourlyRate.toString(),                                  // 5: 시급
-          monthlyData?.weeklyHours.toStringAsFixed(0) ?? '40',          // 6: 주소정근로시간
-        ];
+        // 0: 이름 (텍스트)
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+            .value = TextCellValue(worker.name);
         
-        // 기본 정보만 입력
-        for (var j = 0; j < basicInfo.length; j++) {
-          sheet
-              .cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: rowIndex))
-              .value = TextCellValue(basicInfo[j]);
+        // 1: 생년월일 (텍스트 - YYMMDD 형식 유지)
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+            .value = TextCellValue(worker.birthDate);
+        
+        // 2: 입사일 (텍스트)
+        var cell2 = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex));
+        cell2.value = TextCellValue(worker.joinDate ?? '');
+        cell2.cellStyle = userInputStyle;
+        
+        // 3: 퇴사일 (텍스트)
+        var cell3 = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex));
+        cell3.value = TextCellValue(worker.resignDate ?? '');
+        cell3.cellStyle = userInputStyle;
+        
+        // 4: 월급 (숫자)
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
+            .value = IntCellValue(worker.monthlySalary);
+        
+        // 5: 시급 (숫자)
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex))
+            .value = IntCellValue(worker.hourlyRate);
+        
+        // 6: 주소정근로시간 (숫자)
+        final weeklyHours = monthlyData?.weeklyHours.toInt() ?? 40;
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex))
+            .value = IntCellValue(weeklyHours);
+        
+        // 7~16번 컬럼(정상근로시간~추가공제2)는 빈칸 + 주황색 배경
+        for (var col = 7; col <= 16; col++) {
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIndex))
+              .cellStyle = userInputStyle;
         }
-        
-        // 7번 컬럼(정상근로시간)부터는 빈칸으로 둠 (사용자가 직접 입력)
       }
     }
 
