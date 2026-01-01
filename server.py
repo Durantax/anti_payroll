@@ -2380,18 +2380,43 @@ def get_allowance_masters(client_id: int):
         if not table_exists(conn, "dbo.AllowanceMasters"):
             return []
 
-        rows = fetch_all(
-            conn,
-            """
-            SELECT AllowanceId AS allowanceId, ClientId AS clientId, AllowanceName AS allowanceName,
-            IsActive AS isActive, CONVERT(NVARCHAR(19), CreatedAt, 126) AS createdAt
+        # 동적 컬럼 체크
+        has_tax_free = column_exists(conn, "dbo.AllowanceMasters", "IsTaxFree")
+        has_default_amount = column_exists(conn, "dbo.AllowanceMasters", "DefaultAmount")
+
+        select_parts = [
+            "AllowanceId AS allowanceId",
+            "ClientId AS clientId",
+            "AllowanceName AS allowanceName",
+            "IsActive AS isActive",
+        ]
+
+        if has_tax_free:
+            select_parts.append("IsTaxFree AS isTaxFree")
+        if has_default_amount:
+            select_parts.append("DefaultAmount AS defaultAmount")
+
+        select_parts.append("CONVERT(NVARCHAR(19), CreatedAt, 126) AS createdAt")
+
+        sql = f"""
+            SELECT {', '.join(select_parts)}
             FROM dbo.AllowanceMasters WHERE ClientId=? ORDER BY AllowanceId
-            """,
-            (client_id,),
-        )
+        """
+
+        rows = fetch_all(conn, sql, (client_id,))
 
         for r in rows:
             r["isActive"] = bool(r.get("isActive"))
+            
+            if not has_tax_free:
+                r["isTaxFree"] = False
+            else:
+                r["isTaxFree"] = bool(r.get("isTaxFree"))
+            
+            if not has_default_amount:
+                r["defaultAmount"] = 0
+            else:
+                r["defaultAmount"] = int(r.get("defaultAmount") or 0)
 
         return rows
     finally:
@@ -2456,18 +2481,35 @@ def get_deduction_masters(client_id: int):
         if not table_exists(conn, "dbo.DeductionMasters"):
             return []
 
-        rows = fetch_all(
-            conn,
-            """
-            SELECT DeductionId AS deductionId, ClientId AS clientId, DeductionName AS deductionName,
-            IsActive AS isActive, CONVERT(NVARCHAR(19), CreatedAt, 126) AS createdAt
+        # 동적 컬럼 체크
+        has_default_amount = column_exists(conn, "dbo.DeductionMasters", "DefaultAmount")
+
+        select_parts = [
+            "DeductionId AS deductionId",
+            "ClientId AS clientId",
+            "DeductionName AS deductionName",
+            "IsActive AS isActive",
+        ]
+
+        if has_default_amount:
+            select_parts.append("DefaultAmount AS defaultAmount")
+
+        select_parts.append("CONVERT(NVARCHAR(19), CreatedAt, 126) AS createdAt")
+
+        sql = f"""
+            SELECT {', '.join(select_parts)}
             FROM dbo.DeductionMasters WHERE ClientId=? ORDER BY DeductionId
-            """,
-            (client_id,),
-        )
+        """
+
+        rows = fetch_all(conn, sql, (client_id,))
 
         for r in rows:
             r["isActive"] = bool(r.get("isActive"))
+            
+            if not has_default_amount:
+                r["defaultAmount"] = 0
+            else:
+                r["defaultAmount"] = int(r.get("defaultAmount") or 0)
 
         return rows
     finally:

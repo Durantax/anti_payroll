@@ -693,6 +693,7 @@ class AppProvider with ChangeNotifier {
         );
 
         int workerId;
+        bool needsUpdate = false;
 
         // 신규 직원이면 서버에 저장
         if (existingWorker.id == null || existingWorker.name.isEmpty) {
@@ -735,6 +736,39 @@ class AppProvider with ChangeNotifier {
         } else {
           workerId = existingWorker.id!;
           print('기존 직원: ${existingWorker.name} (ID: $workerId)');
+          
+          // 기존 직원의 월급/시급/주소정근로시간이 변경되었는지 확인
+          final excelMonthlySalary = data['monthlySalary'] as int;
+          final excelHourlyRate = data['hourlyRate'] as int;
+          final excelJoinDate = data['joinDate'] as String?;
+          final excelResignDate = data['resignDate'] as String?;
+          
+          if (existingWorker.monthlySalary != excelMonthlySalary ||
+              existingWorker.hourlyRate != excelHourlyRate ||
+              existingWorker.joinDate != excelJoinDate ||
+              existingWorker.resignDate != excelResignDate) {
+            needsUpdate = true;
+            print('직원 정보 변경 감지: ${existingWorker.name}');
+            print('  월급: ${existingWorker.monthlySalary} -> $excelMonthlySalary');
+            print('  시급: ${existingWorker.hourlyRate} -> $excelHourlyRate');
+            
+            // 업데이트된 직원 정보로 서버에 저장
+            final updatedWorker = existingWorker.copyWith(
+              monthlySalary: excelMonthlySalary,
+              hourlyRate: excelHourlyRate,
+              joinDate: excelJoinDate,
+              resignDate: excelResignDate,
+              salaryType: excelHourlyRate > 0 ? 'HOURLY' : 'MONTHLY',
+            );
+            
+            try {
+              await saveWorker(updatedWorker);
+              print('직원 정보 업데이트 완료');
+            } catch (e) {
+              print('직원 업데이트 실패: $e');
+              _setError('직원 업데이트 실패 (${data['name']}): $e');
+            }
+          }
         }
 
         // MonthlyData 생성
@@ -748,10 +782,25 @@ class AppProvider with ChangeNotifier {
           weeklyHours: data['weeklyHours'] as double,
           weekCount: data['weekCount'] as int,
           bonus: data['bonus'] as int,
+          
+          // 고정 마스터: additionalPay1 = 식대, additionalPay2 = 차량
           additionalPay1: data['additionalPay1'] as int,
+          additionalPay1Name: '식대',
+          additionalPay1IsTaxFree: true,
+          
           additionalPay2: data['additionalPay2'] as int,
+          additionalPay2Name: '자기차량운전보조금',
+          additionalPay2IsTaxFree: true,
+          
+          // 거래처별 첫 번째 마스터: additionalPay3 (이름은 나중에 마스터에서 가져옴)
+          additionalPay3: data['additionalPay3'] as int? ?? 0,
+          additionalPay3Name: '',  // TODO: 마스터에서 이름 가져오기
+          additionalPay3IsTaxFree: false,
+          
           additionalDeduct1: data['additionalDeduct1'] as int,
+          additionalDeduct1Name: '',
           additionalDeduct2: data['additionalDeduct2'] as int,
+          additionalDeduct2Name: '',
         );
 
         updateMonthlyData(workerId, monthlyData);
@@ -782,6 +831,17 @@ class AppProvider with ChangeNotifier {
       final basePath = _getValidBasePath();
       final useSubfolders = settings?.useClientSubfolders ?? true;
       
+      // 거래처별 수당/공제 마스터 로드
+      List<AllowanceMaster> allowanceMasters = [];
+      List<DeductionMaster> deductionMasters = [];
+      
+      try {
+        allowanceMasters = await _apiService.getAllowanceMasters(_selectedClient!.id);
+        deductionMasters = await _apiService.getDeductionMasters(_selectedClient!.id);
+      } catch (e) {
+        print('마스터 로드 실패 (무시): $e');
+      }
+      
       // 직원 기본 정보(이름~주소정근로시간)는 DB에서 자동 입력
       // 정상근로시간부터는 사용자가 매달 직접 입력
       await FileEmailService.generateExcelTemplate(
@@ -789,6 +849,8 @@ class AppProvider with ChangeNotifier {
         bizId: _selectedClient!.bizId,
         workers: currentWorkers,
         monthlyDataMap: currentMonthlyDataMap,
+        allowanceMasters: allowanceMasters,
+        deductionMasters: deductionMasters,
         basePath: basePath,
         useClientSubfolders: useSubfolders,
         year: selectedYear,

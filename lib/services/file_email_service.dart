@@ -16,6 +16,57 @@ import '../core/models.dart';
 import '../utils/path_helper.dart';
 
 class FileEmailService {
+  // ========== 날짜 정규화 헬퍼 함수 ==========
+  
+  /// 생년월일 정규화 (YYMMDD 형식으로 변환)
+  /// 입력: "960101", "19960101", "1996-01-01", 960101 (숫자)
+  /// 출력: "960101"
+  static String _normalizeBirthDate(String raw) {
+    if (raw.isEmpty) return '';
+    
+    // 공백과 특수문자 제거
+    final cleaned = raw.replaceAll(RegExp(r'[^\d]'), '');
+    
+    // 8자리 (YYYYMMDD) -> YYMMDD
+    if (cleaned.length == 8) {
+      return cleaned.substring(2); // 앞의 19 또는 20 제거
+    }
+    
+    // 6자리 (YYMMDD) -> 그대로 사용
+    if (cleaned.length == 6) {
+      return cleaned;
+    }
+    
+    // 그 외 형식은 원본 반환
+    return raw.trim();
+  }
+  
+  /// 전체 날짜 정규화 (YYYY-MM-DD 형식으로 변환)
+  /// 입력: "2023-01-15", "20230115", "2023/01/15", 빈 문자열
+  /// 출력: "2023-01-15" 또는 null
+  static String? _normalizeFullDate(String raw) {
+    if (raw.isEmpty) return null;
+    
+    // 공백 및 특수문자 제거 후 숫자만 추출
+    final cleaned = raw.replaceAll(RegExp(r'[^\d]'), '');
+    
+    // 8자리 숫자 (YYYYMMDD)
+    if (cleaned.length == 8) {
+      final year = cleaned.substring(0, 4);
+      final month = cleaned.substring(4, 6);
+      final day = cleaned.substring(6, 8);
+      return '$year-$month-$day';
+    }
+    
+    // 이미 YYYY-MM-DD 형식인 경우
+    if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(raw)) {
+      return raw.trim();
+    }
+    
+    // 변환 불가능한 경우 null
+    return null;
+  }
+
   // ========== Excel 템플릿 생성 ==========
 
   static Future<File> generateExcelTemplate(
@@ -23,6 +74,8 @@ class FileEmailService {
     String? bizId,
     List<WorkerModel>? workers,
     Map<int, MonthlyData>? monthlyDataMap,
+    List<AllowanceMaster>? allowanceMasters,
+    List<DeductionMaster>? deductionMasters,
     required String basePath,
     bool useClientSubfolders = true,
     required int year,
@@ -60,11 +113,11 @@ class FileEmailService {
     // 안내 문구 (4행)
     var infoStyle = CellStyle(
       fontSize: 10,
-      backgroundColorHex: ExcelColor.fromHexString('#FFF9E6'),
+      italic: true,
     );
     sheet.cell(CellIndex.indexByString('A4')).value = TextCellValue('※ 안내');
     sheet.cell(CellIndex.indexByString('A4')).cellStyle = infoStyle;
-    sheet.cell(CellIndex.indexByString('B4')).value = TextCellValue('월급제: 월급란에 금액 입력 (시급란은 0 또는 빈칸)');
+    sheet.cell(CellIndex.indexByString('B4')).value = TextCellValue('월급제: 월급란에 금액 입력 (시급란은 0 또는 빈칸). 월급/시급/주소정근로시간 수정 가능');
     sheet.cell(CellIndex.indexByString('G4')).value = TextCellValue('시급제: 시급란에 금액 입력 (월급란은 0 또는 빈칸)');
     
     // 헤더 (5행 - 스타일 적용)
@@ -76,7 +129,8 @@ class FileEmailService {
       horizontalAlign: HorizontalAlign.Center,
     );
     
-    final headers = [
+    // 기본 헤더 (0~16번 컬럼)
+    final baseHeaders = [
       '이름',
       '생년월일(YYMMDD)',
       '입사일(YYYY-MM-DD)',
@@ -95,16 +149,46 @@ class FileEmailService {
       '추가공제1',
       '추가공제2',
     ];
+    
+    // 동적 헤더 추가 (기본 마스터 + 거래처별 마스터)
+    final dynamicHeaders = <String>[];
+    
+    // 기본 마스터: 식대, 자기차량운전보조금 (모든 거래처 공통)
+    dynamicHeaders.add('식대(비과세)');
+    dynamicHeaders.add('자기차량운전보조금(비과세)');
+    
+    // 거래처별 추가 수당
+    if (allowanceMasters != null) {
+      for (var master in allowanceMasters) {
+        final header = master.isTaxFree 
+            ? '${master.name}(비과세)'
+            : master.name;
+        dynamicHeaders.add(header);
+      }
+    }
+    
+    // 거래처별 추가 공제
+    if (deductionMasters != null) {
+      for (var master in deductionMasters) {
+        dynamicHeaders.add(master.name);
+      }
+    }
+    
+    final allHeaders = [...baseHeaders, ...dynamicHeaders];
 
-    for (var i = 0; i < headers.length; i++) {
+    // 모든 헤더 적용
+    for (var i = 0; i < allHeaders.length; i++) {
       var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 4));
-      cell.value = TextCellValue(headers[i]);
+      cell.value = TextCellValue(allHeaders[i]);
       cell.cellStyle = headerStyle;
     }
 
-    // 거래처 입력 필드 스타일 (주황색 배경)
-    var userInputStyle = CellStyle(
-      backgroundColorHex: ExcelColor.fromHexString('#FFE5CC'),
+    // 테이블 테두리 스타일
+    var tableCellStyle = CellStyle(
+      leftBorder: Border(borderStyle: BorderStyle.Thin),
+      rightBorder: Border(borderStyle: BorderStyle.Thin),
+      topBorder: Border(borderStyle: BorderStyle.Thin),
+      bottomBorder: Border(borderStyle: BorderStyle.Thin),
     );
     
     // 직원 기본 정보 자동 입력 (이름, 생년월일, 입사일, 퇴사일, 월급, 시급, 주소정근로시간)
@@ -128,32 +212,39 @@ class FileEmailService {
             .value = TextCellValue(worker.birthDate);
         
         // 2: 입사일 (텍스트)
-        var cell2 = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex));
-        cell2.value = TextCellValue(worker.joinDate ?? '');
-        cell2.cellStyle = userInputStyle;
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+            .value = TextCellValue(worker.joinDate ?? '');
         
         // 3: 퇴사일 (텍스트)
-        var cell3 = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex));
-        cell3.value = TextCellValue(worker.resignDate ?? '');
-        cell3.cellStyle = userInputStyle;
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
+            .value = TextCellValue(worker.resignDate ?? '');
         
-        // 4: 월급 (숫자)
+        // 4: 월급 (숫자) - 수정 가능
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
             .value = IntCellValue(worker.monthlySalary);
         
-        // 5: 시급 (숫자)
+        // 5: 시급 (숫자) - 수정 가능
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex))
             .value = IntCellValue(worker.hourlyRate);
         
-        // 6: 주소정근로시간 (숫자)
+        // 6: 주소정근로시간 (숫자) - 수정 가능
         final weeklyHours = monthlyData?.weeklyHours.toInt() ?? 40;
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex))
             .value = IntCellValue(weeklyHours);
         
-        // 7~16번 컬럼(정상근로시간~추가공제2)는 빈칸 + 주황색 배경
-        for (var col = 7; col <= 16; col++) {
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIndex))
-              .cellStyle = userInputStyle;
+        // 17: 식대 (비과세) - 기본값 0원
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 17, rowIndex: rowIndex))
+            .value = IntCellValue(0);
+        
+        // 18: 자기차량운전보조금 (비과세) - 기본값 0원
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 18, rowIndex: rowIndex))
+            .value = IntCellValue(0);
+        
+        // 모든 컬럼에 테이블 테두리 적용 (기본 + 동적)
+        final totalColumns = allHeaders.length;
+        for (var col = 0; col < totalColumns; col++) {
+          var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIndex));
+          cell.cellStyle = tableCellStyle;
         }
       }
     }
@@ -222,28 +313,45 @@ class FileEmailService {
         final name = row[0]?.value?.toString() ?? '';
         if (name.isEmpty) continue;
 
-        final birthDate = row[1]?.value?.toString() ?? '';
-        final joinDate = row[2]?.value?.toString() ?? ''; // 입사일
-        final resignDate = row[3]?.value?.toString() ?? ''; // 퇴사일
-        final monthlySalary = int.tryParse(row[4]?.value?.toString() ?? '0') ?? 0;
-        final hourlyRate = int.tryParse(row[5]?.value?.toString() ?? '0') ?? 0;
+        // 생년월일 처리 (숫자 또는 텍스트 모두 처리)
+        final birthDateRaw = row[1]?.value?.toString() ?? '';
+        final birthDate = _normalizeBirthDate(birthDateRaw);
+        
+        // 입사일 처리 (YYYY-MM-DD 형식으로 변환)
+        final joinDateRaw = row[2]?.value?.toString() ?? '';
+        final joinDate = _normalizeFullDate(joinDateRaw);
+        
+        // 퇴사일 처리 (YYYY-MM-DD 형식으로 변환)
+        final resignDateRaw = row[3]?.value?.toString() ?? '';
+        final resignDate = _normalizeFullDate(resignDateRaw);
+        
+        final monthlySalary = int.tryParse(row[4]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
+        final hourlyRate = int.tryParse(row[5]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
         final weeklyHours = double.tryParse(row[6]?.value?.toString() ?? '40') ?? 40;
         final normalHours = double.tryParse(row[7]?.value?.toString() ?? '209') ?? 209;
         final overtimeHours = double.tryParse(row[8]?.value?.toString() ?? '0') ?? 0;
         final nightHours = double.tryParse(row[9]?.value?.toString() ?? '0') ?? 0;
         final holidayHours = double.tryParse(row[10]?.value?.toString() ?? '0') ?? 0;
         final weekCount = int.tryParse(row[11]?.value?.toString() ?? '4') ?? 4;
-        final bonus = int.tryParse(row[12]?.value?.toString() ?? '0') ?? 0;
-        final additionalPay1 = int.tryParse(row[13]?.value?.toString() ?? '0') ?? 0;
-        final additionalPay2 = int.tryParse(row[14]?.value?.toString() ?? '0') ?? 0;
-        final additionalDeduct1 = int.tryParse(row[15]?.value?.toString() ?? '0') ?? 0;
-        final additionalDeduct2 = int.tryParse(row[16]?.value?.toString() ?? '0') ?? 0;
+        final bonus = int.tryParse(row[12]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
+        
+        // 컬럼 13-16: 이전 추가수당/공제 (하위 호환성, 무시)
+        // 이제 사용하지 않지만 파싱은 유지
+        
+        // 컬럼 17: 식대 (비과세) - additionalPay1
+        final mealAllowance = int.tryParse(row[17]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
+        
+        // 컬럼 18: 자기차량운전보조금 (비과세) - additionalPay2
+        final carAllowance = int.tryParse(row[18]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
+        
+        // 컬럼 19: 거래처별 첫 번째 마스터 (동적) - additionalPay3
+        final thirdAllowance = int.tryParse(row[19]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
 
         workers.add({
           'name': name,
           'birthDate': birthDate,
-          'joinDate': joinDate.isNotEmpty ? joinDate : null,
-          'resignDate': resignDate.isNotEmpty ? resignDate : null,
+          'joinDate': joinDate,
+          'resignDate': resignDate,
           'monthlySalary': monthlySalary,
           'hourlyRate': hourlyRate,
           'weeklyHours': weeklyHours,
@@ -253,10 +361,11 @@ class FileEmailService {
           'holidayHours': holidayHours,
           'weekCount': weekCount,
           'bonus': bonus,
-          'additionalPay1': additionalPay1,
-          'additionalPay2': additionalPay2,
-          'additionalDeduct1': additionalDeduct1,
-          'additionalDeduct2': additionalDeduct2,
+          'additionalPay1': mealAllowance,      // 식대 (컬럼 17)
+          'additionalPay2': carAllowance,       // 차량 (컬럼 18)
+          'additionalPay3': thirdAllowance,     // 거래처별 마스터 (컬럼 19)
+          'additionalDeduct1': 0,               // 공제는 나중에 추가
+          'additionalDeduct2': 0,
         });
       }
 

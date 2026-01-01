@@ -1,0 +1,91 @@
+﻿연결 성공: 25.2.89.129
+
+================================================================================
+1. Allowance/Deduction 관련 테이블 목록
+================================================================================
+  - AllowanceMaster
+  - AllowanceMasters
+  - DeductionMaster
+  - DeductionMasters
+  - EmployeeAllowances
+  - EmployeeDeductions
+
+================================================================================
+2. AllowanceMaster 테이블 구조 (있다면)
+================================================================================
+  AllowanceId                    int             NULL:NO  DEFAULT:None
+  ClientId                       int             NULL:NO  DEFAULT:None
+  AllowanceName                  nvarchar        NULL:NO  DEFAULT:None
+  AllowanceCode                  nvarchar        NULL:YES DEFAULT:None
+  IsTaxable                      bit             NULL:NO  DEFAULT:((1))
+  IsMonthlyDefault               bit             NULL:NO  DEFAULT:((1))
+  DefaultAmount                  decimal         NULL:NO  DEFAULT:((0))
+  Description                    nvarchar        NULL:YES DEFAULT:None
+  DisplayOrder                   int             NULL:NO  DEFAULT:((0))
+  IsActive                       bit             NULL:NO  DEFAULT:((1))
+  CreatedAt                      datetime2       NULL:NO  DEFAULT:(sysutcdatetime())
+  UpdatedAt                      datetime2       NULL:NO  DEFAULT:(sysutcdatetime())
+
+================================================================================
+3. AllowanceMasters 테이블 구조 (있다면)
+================================================================================
+  Id                             int             NULL:NO  DEFAULT:None
+  ClientId                       int             NULL:NO  DEFAULT:None
+  Name                           nvarchar        NULL:NO  DEFAULT:None
+  IsTaxFree                      bit             NULL:NO  DEFAULT:((0))
+  DefaultAmount                  decimal         NULL:YES DEFAULT:None
+  CreatedAt                      datetime2       NULL:NO  DEFAULT:(sysutcdatetime())
+
+================================================================================
+4. DeductionMaster 테이블 구조 (있다면)
+================================================================================
+  DeductionId                    int             NULL:NO  DEFAULT:None
+  ClientId                       int             NULL:NO  DEFAULT:None
+  DeductionName                  nvarchar        NULL:NO  DEFAULT:None
+  DeductionCode                  nvarchar        NULL:YES DEFAULT:None
+  DeductionType                  nvarchar        NULL:NO  DEFAULT:('general')
+  IsPreTax                       bit             NULL:NO  DEFAULT:((0))
+  IsMonthlyDefault               bit             NULL:NO  DEFAULT:((1))
+  DefaultAmount                  decimal         NULL:NO  DEFAULT:((0))
+  Description                    nvarchar        NULL:YES DEFAULT:None
+  DisplayOrder                   int             NULL:NO  DEFAULT:((0))
+  IsActive                       bit             NULL:NO  DEFAULT:((1))
+  CreatedAt                      datetime2       NULL:NO  DEFAULT:(sysutcdatetime())
+  UpdatedAt                      datetime2       NULL:NO  DEFAULT:(sysutcdatetime())
+
+================================================================================
+5. DeductionMasters 테이블 구조 (있다면)
+================================================================================
+  Id                             int             NULL:NO  DEFAULT:None
+  ClientId                       int             NULL:NO  DEFAULT:None
+  Name                           nvarchar        NULL:NO  DEFAULT:None
+  DefaultAmount                  decimal         NULL:YES DEFAULT:None
+  CreatedAt                      datetime2       NULL:NO  DEFAULT:(sysutcdatetime())
+
+================================================================================
+6. PayrollMonthlyInput의 Additional 관련 컬럼
+================================================================================
+  ExtraAllowance                 decimal         NULL:NO  DEFAULT:((0))
+  ExtraDeduction                 decimal         NULL:NO  DEFAULT:((0))
+
+================================================================================
+7. PayrollMonthlyInput의 모든 컬럼 목록
+================================================================================
+  Id                                  int
+  EmployeeId                          int
+  Ym                                  nvarchar
+  WorkHours                           decimal
+  Bonus                               decimal
+  OvertimeHours                       decimal
+  NightHours                          decimal
+  HolidayHours                        decimal
+  CreatedAt                           datetime2
+  UpdatedAt                           datetime2
+  ExtraAllowance                      decimal
+  ExtraDeduction                      decimal
+  Memo                                nvarchar
+  WeeklyHours                         decimal
+  WeekCount                           int
+  IsDurunuri                          bit
+
+완료!

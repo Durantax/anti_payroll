@@ -357,7 +357,68 @@ class MonthlyData {
     if (additionalPay3IsTaxFree) total += additionalPay3;
     return total;
   }
+
+  factory MonthlyData.fromJson(Map<String, dynamic> json) {
+    return MonthlyData(
+      employeeId: json['employeeId'] as int,
+      ym: json['ym'] as String,
+      normalHours: (json['normalHours'] as num?)?.toDouble() ?? 209,
+      overtimeHours: (json['overtimeHours'] as num?)?.toDouble() ?? 0,
+      nightHours: (json['nightHours'] as num?)?.toDouble() ?? 0,
+      holidayHours: (json['holidayHours'] as num?)?.toDouble() ?? 0,
+      weeklyHours: (json['weeklyHours'] as num?)?.toDouble() ?? 40,
+      weekCount: (json['weekCount'] as num?)?.toInt() ?? 4,
+      bonus: (json['bonus'] as num?)?.toInt() ?? 0,
+      isDurunuri: json['isDurunuri'] as bool? ?? false,
+      additionalPay1: (json['additionalPay1'] as num?)?.toInt() ?? 0,
+      additionalPay1Name: json['additionalPay1Name'] as String? ?? '',
+      additionalPay1IsTaxFree: json['additionalPay1IsTaxFree'] as bool? ?? false,
+      additionalPay2: (json['additionalPay2'] as num?)?.toInt() ?? 0,
+      additionalPay2Name: json['additionalPay2Name'] as String? ?? '',
+      additionalPay2IsTaxFree: json['additionalPay2IsTaxFree'] as bool? ?? false,
+      additionalPay3: (json['additionalPay3'] as num?)?.toInt() ?? 0,
+      additionalPay3Name: json['additionalPay3Name'] as String? ?? '',
+      additionalPay3IsTaxFree: json['additionalPay3IsTaxFree'] as bool? ?? false,
+      additionalDeduct1: (json['additionalDeduct1'] as num?)?.toInt() ?? 0,
+      additionalDeduct1Name: json['additionalDeduct1Name'] as String? ?? '',
+      additionalDeduct2: (json['additionalDeduct2'] as num?)?.toInt() ?? 0,
+      additionalDeduct2Name: json['additionalDeduct2Name'] as String? ?? '',
+      additionalDeduct3: (json['additionalDeduct3'] as num?)?.toInt() ?? 0,
+      additionalDeduct3Name: json['additionalDeduct3Name'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'employeeId': employeeId,
+      'ym': ym,
+      'normalHours': normalHours,
+      'overtimeHours': overtimeHours,
+      'nightHours': nightHours,
+      'holidayHours': holidayHours,
+      'weeklyHours': weeklyHours,
+      'weekCount': weekCount,
+      'bonus': bonus,
+      'isDurunuri': isDurunuri,
+      'additionalPay1': additionalPay1,
+      'additionalPay1Name': additionalPay1Name,
+      'additionalPay1IsTaxFree': additionalPay1IsTaxFree,
+      'additionalPay2': additionalPay2,
+      'additionalPay2Name': additionalPay2Name,
+      'additionalPay2IsTaxFree': additionalPay2IsTaxFree,
+      'additionalPay3': additionalPay3,
+      'additionalPay3Name': additionalPay3Name,
+      'additionalPay3IsTaxFree': additionalPay3IsTaxFree,
+      'additionalDeduct1': additionalDeduct1,
+      'additionalDeduct1Name': additionalDeduct1Name,
+      'additionalDeduct2': additionalDeduct2,
+      'additionalDeduct2Name': additionalDeduct2Name,
+      'additionalDeduct3': additionalDeduct3,
+      'additionalDeduct3Name': additionalDeduct3Name,
+    };
+  }
 }
+
 
 // ============================================================================
 // 급여 계산 결과
