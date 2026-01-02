@@ -294,7 +294,7 @@ class EmployeeUpsertIn(BaseModel):
     clientId: int
     name: str
     birthDate: str = Field(..., description="YYYYMMDD or any string")
-    employmentType: Literal["regular", "freelance"] = "regular"
+    employmentType: Literal["labor", "business"] = "labor"  # labor=근로소득, business=사업소득
     salaryType: Literal["MONTHLY", "HOURLY"] = "HOURLY"
     baseSalary: float = 0
     hourlyRate: float = 0
@@ -525,6 +525,45 @@ class ConfirmationStatusOut(BaseModel):
     isConfirmed: bool
     confirmedAt: Optional[str] = None
     confirmedBy: Optional[str] = None
+
+
+# ✅ 급여 결과 저장 (명세서 수정)
+class PayrollResultSaveIn(BaseModel):
+    employeeId: int
+    clientId: int
+    year: int
+    month: int
+    baseSalary: int = 0
+    overtimeAllowance: int = 0
+    nightAllowance: int = 0
+    holidayAllowance: int = 0
+    weeklyHolidayPay: int = 0
+    bonus: int = 0
+    additionalAllowance1Name: Optional[str] = None
+    additionalAllowance1Amount: int = 0
+    additionalAllowance2Name: Optional[str] = None
+    additionalAllowance2Amount: int = 0
+    totalPayment: int = 0
+    nationalPension: int = 0
+    healthInsurance: int = 0
+    longTermCare: int = 0
+    employmentInsurance: int = 0
+    incomeTax: int = 0
+    localIncomeTax: int = 0
+    additionalDeduction1Name: Optional[str] = None
+    additionalDeduction1Amount: int = 0
+    additionalDeduction2Name: Optional[str] = None
+    additionalDeduction2Amount: int = 0
+    totalDeduction: int = 0
+    netPay: int = 0
+    normalHours: float = 0
+    overtimeHours: float = 0
+    nightHours: float = 0
+    holidayHours: float = 0
+    attendanceWeeks: int = 0
+    paymentFormulas: Optional[dict] = None
+    deductionFormulas: Optional[dict] = None
+    calculatedBy: str = 'auto'
 
 
 # =========================
@@ -2562,6 +2601,135 @@ def delete_deduction_master(deduction_id: int):
 
         exec_sql(conn, "DELETE FROM dbo.DeductionMasters WHERE DeductionId=?", (deduction_id,))
         return {"ok": True}
+    finally:
+        conn.close()
+
+
+# 급여 결과 저장 (명세서 수정)
+# =========================
+@app.post("/payroll/results/save", dependencies=[Depends(require_api_key)])
+def save_payroll_result(body: PayrollResultSaveIn):
+    """
+    명세서 수정 데이터 저장
+    - 수정된 급여 결과를 JSON 형태로 저장
+    - calculatedBy='manual'이면 자동 재계산 방지
+    """
+    conn = get_conn()
+    try:
+        print(f"[API] 급여 결과 저장: EmployeeId={body.employeeId}, Year={body.year}, Month={body.month}")
+        print(f"[API] 계산 방식: {body.calculatedBy}")
+        print(f"[API] 국민연금: {body.nationalPension}, 건강보험: {body.healthInsurance}")
+        
+        # 급여 결과를 JSON으로 변환
+        result_json = json.dumps({
+            "baseSalary": body.baseSalary,
+            "overtimePay": body.overtimeAllowance,
+            "nightPay": body.nightAllowance,
+            "holidayPay": body.holidayAllowance,
+            "weeklyHolidayPay": body.weeklyHolidayPay,
+            "bonus": body.bonus,
+            "totalPayment": body.totalPayment,
+            "nationalPension": body.nationalPension,
+            "healthInsurance": body.healthInsurance,
+            "longTermCare": body.longTermCare,
+            "employmentInsurance": body.employmentInsurance,
+            "incomeTax": body.incomeTax,
+            "localIncomeTax": body.localIncomeTax,
+            "totalDeduction": body.totalDeduction,
+            "netPay": body.netPay,
+            "calculatedBy": body.calculatedBy,
+        }, ensure_ascii=False)
+        
+        # ym 형식: YYYYMM
+        ym = f"{body.year:04d}{body.month:02d}"
+        
+        # MonthlyData 테이블 확인 및 컬럼 추가
+        if not table_exists(conn, "dbo.MonthlyData"):
+            print("[API ERROR] MonthlyData 테이블이 없습니다")
+            raise HTTPException(status_code=500, detail="MonthlyData 테이블이 없습니다")
+        
+        # PayrollResultOverride 컬럼 확인 및 추가
+        if not column_exists(conn, "dbo.MonthlyData", "PayrollResultOverride"):
+            print("[API] PayrollResultOverride 컬럼 추가 중...")
+            exec_sql(conn, "ALTER TABLE dbo.MonthlyData ADD PayrollResultOverride NVARCHAR(MAX) NULL")
+            print("[API] ✅ PayrollResultOverride 컬럼 추가 완료")
+        
+        # 기존 MonthlyData 레코드 확인
+        existing = fetch_one(
+            conn,
+            "SELECT EmployeeId FROM dbo.MonthlyData WHERE EmployeeId=? AND Ym=?",
+            (body.employeeId, ym)
+        )
+        
+        if existing:
+            # UPDATE
+            print(f"[API] MonthlyData 업데이트: EmployeeId={body.employeeId}, Ym={ym}")
+            exec_sql(
+                conn,
+                "UPDATE dbo.MonthlyData SET PayrollResultOverride=? WHERE EmployeeId=? AND Ym=?",
+                (result_json, body.employeeId, ym)
+            )
+        else:
+            # INSERT (기본 MonthlyData 없으면 생성)
+            print(f"[API] MonthlyData 생성: EmployeeId={body.employeeId}, Ym={ym}")
+            exec_sql(
+                conn,
+                "INSERT INTO dbo.MonthlyData (EmployeeId, Ym, PayrollResultOverride) VALUES (?, ?, ?)",
+                (body.employeeId, ym, result_json)
+            )
+        
+        print(f"[API] ✅ 급여 결과 저장 완료")
+        return {"ok": True, "message": "급여 결과 저장 완료"}
+    except Exception as e:
+        print(f"[API ERROR] 급여 결과 저장 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"급여 결과 저장 실패: {str(e)}")
+    finally:
+        conn.close()
+
+
+@app.get("/payroll/results/get", dependencies=[Depends(require_api_key)])
+def get_payroll_result(employeeId: int, year: int, month: int):
+    """
+    저장된 급여 결과 조회
+    - MonthlyData 테이블의 PayrollResultOverride JSON 읽기
+    - 없으면 null 반환 (Flutter에서 계산하도록)
+    """
+    conn = get_conn()
+    try:
+        ym = f"{year:04d}{month:02d}"
+        
+        print(f"[API] 급여 결과 조회: EmployeeId={employeeId}, Ym={ym}")
+        
+        # MonthlyData 테이블 확인
+        if not table_exists(conn, "dbo.MonthlyData"):
+            return {"result": None}
+        
+        # PayrollResultOverride 컬럼 확인
+        if not column_exists(conn, "dbo.MonthlyData", "PayrollResultOverride"):
+            return {"result": None}
+        
+        # 저장된 급여 결과 조회
+        row = fetch_one(
+            conn,
+            "SELECT PayrollResultOverride FROM dbo.MonthlyData WHERE EmployeeId=? AND Ym=?",
+            (employeeId, ym)
+        )
+        
+        if row and row[0]:
+            result_json = row[0]
+            print(f"[API] ✅ 저장된 급여 결과 있음")
+            return {"result": json.loads(result_json)}
+        else:
+            print(f"[API] 저장된 급여 결과 없음 - Flutter에서 계산 필요")
+            return {"result": None}
+            
+    except Exception as e:
+        print(f"[API ERROR] 급여 결과 조회 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"result": None}
     finally:
         conn.close()
 

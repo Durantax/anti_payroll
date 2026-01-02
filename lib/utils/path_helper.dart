@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart' as path;
 
 /// 파일 저장 경로 헬퍼
@@ -14,6 +15,11 @@ class PathHelper {
   /// - macOS: /Users/사용자/Documents/급여관리프로그램
   /// - Linux: /home/사용자/Documents/급여관리프로그램
   static String getDefaultDownloadPath() {
+    // 웹 환경에서는 Downloads 폴더를 기본값으로 사용
+    if (kIsWeb) {
+      return 'Downloads/급여관리프로그램';
+    }
+    
     String documentsPath;
     
     if (Platform.isWindows) {
@@ -149,6 +155,9 @@ class PathHelper {
   
   /// 기본 경로 예시 생성
   static String getExamplePath() {
+    if (kIsWeb) {
+      return 'Downloads/급여관리프로그램';
+    }
     if (Platform.isWindows) {
       return 'C:\\Users\\사용자\\OneDrive\\문서\\급여관리프로그램';
     } else if (Platform.isMacOS) {
@@ -164,6 +173,12 @@ class PathHelper {
   /// macOS: open 명령으로 Finder 열기
   /// Linux: xdg-open으로 파일 매니저 열기
   static Future<bool> openFolder(String folderPath) async {
+    // 웹 환경에서는 폴더 열기 불가
+    if (kIsWeb) {
+      print('웹 환경에서는 폴더 열기를 지원하지 않습니다.');
+      return false;
+    }
+    
     try {
       final directory = Directory(folderPath);
       

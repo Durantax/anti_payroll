@@ -95,7 +95,7 @@ class PayrollCalculator {
     required MonthlyData monthly,
     required bool has5OrMoreWorkers,
   }) {
-    final isFreelancer = worker.employmentType == 'freelance';
+    final isFreelancer = worker.employmentType == 'business';  // 사업소듍
 
     // ym에서 year와 month 추출 (예: '202501' -> year=2025, month=1)
     int year = 0;
@@ -299,12 +299,21 @@ class PayrollCalculator {
     // ===== 공제 항목 =====
 
     // 1. 국민연금 (4.5%) - 10원 미만 절사
+    // 두루누리 지원: 국가가 80% 지원 → 직원 부담 20%
     int nationalPension = 0;
     String pensionFormula = '';
     if (worker.hasNationalPension) {
       final pensionBase = worker.pensionInsurableWage ?? insuranceBase;
-      nationalPension = ((pensionBase * AppConstants.pensionRate) ~/ 10) * 10; // 10원 미만 절사
-      pensionFormula = '${formatMoney(pensionBase)}원 × 4.5%';
+      final fullAmount = ((pensionBase * AppConstants.pensionRate) ~/ 10) * 10; // 10원 미만 절사
+      
+      if (monthly.isDurunuri) {
+        // 두루누리: 직원 20% 부담
+        nationalPension = ((fullAmount * 0.2) ~/ 10) * 10;
+        pensionFormula = '${formatMoney(pensionBase)}원 × 4.5% × 20% (두루누리)';
+      } else {
+        nationalPension = fullAmount;
+        pensionFormula = '${formatMoney(pensionBase)}원 × 4.5%';
+      }
     }
 
     // 2. 건강보험 (3.545%) - 10원 미만 절사
@@ -327,11 +336,20 @@ class PayrollCalculator {
     }
 
     // 4. 고용보험 (0.9%) - 10원 미만 절사
+    // 두루누리 지원: 국가가 80% 지원 → 직원 부담 20%
     int employmentInsurance = 0;
     String employmentFormula = '';
     if (worker.hasEmploymentInsurance) {
-      employmentInsurance = ((insuranceBase * AppConstants.employmentRate) ~/ 10) * 10; // 10원 미만 절사
-      employmentFormula = '${formatMoney(insuranceBase)}원 × 0.9%';
+      final fullAmount = ((insuranceBase * AppConstants.employmentRate) ~/ 10) * 10; // 10원 미만 절사
+      
+      if (monthly.isDurunuri) {
+        // 두루누리: 직원 20% 부담
+        employmentInsurance = ((fullAmount * 0.2) ~/ 10) * 10;
+        employmentFormula = '${formatMoney(insuranceBase)}원 × 0.9% × 20% (두루누리)';
+      } else {
+        employmentInsurance = fullAmount;
+        employmentFormula = '${formatMoney(insuranceBase)}원 × 0.9%';
+      }
     }
 
     // 5. 소득세 (근로소득 간이세액표 적용)

@@ -130,7 +130,7 @@ class EmployeeManagementScreen extends StatelessWidget {
                                     children: [
                                       Text('생년월일: ${worker.birthDate}'),
                                       Text(
-                                        '구분: ${worker.employmentType == 'regular' ? '근로소득' : '사업소득'}',
+                                        '구분: ${worker.employmentType == 'labor' ? '근로소득' : '사업소득'}',
                                       ),
                                       Text(
                                         worker.salaryType == 'monthly'

@@ -397,7 +397,7 @@ class _PayslipViewScreenState extends State<PayslipViewScreen> {
                     _InfoRow('생년월일', widget.worker.birthDate),
                     _InfoRow(
                       '구분',
-                      widget.worker.employmentType == 'regular' ? '근로소득' : '사업소득',
+                      widget.worker.employmentType == 'labor' ? '근로소득' : '사업소득',
                     ),
                   ],
                 ),

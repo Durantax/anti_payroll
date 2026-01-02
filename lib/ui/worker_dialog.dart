@@ -148,7 +148,7 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
     _useEmail = worker?.useEmail ?? false;
 
     // 구분
-    _employmentType = worker?.employmentType ?? 'regular';
+    _employmentType = worker?.employmentType ?? 'labor';
 
     // 세금 정보
     _taxDependentsController = TextEditingController(text: worker?.taxDependents.toString() ?? '1');
@@ -273,13 +273,13 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
             value: _employmentType,
             decoration: const InputDecoration(labelText: '* 구분', border: OutlineInputBorder()),
             items: const [
-              DropdownMenuItem(value: 'regular', child: Text('근로소득')),
-              DropdownMenuItem(value: 'freelance', child: Text('사업소득(3.3%)')),
+              DropdownMenuItem(value: 'labor', child: Text('근로소듍')),
+              DropdownMenuItem(value: 'business', child: Text('사업소듍(3.3%)')),
             ],
             onChanged: (value) {
               setState(() {
                 _employmentType = value!;
-                if (value == 'freelance') {
+                if (value == 'business') {
                   _hasNationalPension = false;
                   _hasHealthInsurance = false;
                   _hasEmploymentInsurance = false;
@@ -652,7 +652,7 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
         child: const Padding(
             padding: EdgeInsets.all(24),
             child: Text(
-            '사업소득(3.3%)은 4대보험이 적용되지 않습니다.',
+            '사업소듍(3.3%)은 4대보험이 적용되지 않습니다.',
             style: TextStyle(color: Colors.orange, fontSize: 16),
             ),
         ),
@@ -730,7 +730,7 @@ class _WorkerDialogState extends State<WorkerDialog> with SingleTickerProviderSt
           child: const Padding(
             padding: EdgeInsets.all(24),
             child: Text(
-              '사업소득(3.3%)은 소득세가 자동 계산됩니다.',
+              '사업소듍(3.3%)은 소듍세가 자동 계산됩니다.',
               style: TextStyle(color: Colors.orange, fontSize: 16),
             ),
           ),

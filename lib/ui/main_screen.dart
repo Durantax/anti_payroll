@@ -321,7 +321,7 @@ class _MainScreenContentState extends State<MainScreenContent> {
               ),
               DataCell(Text(worker.name)),
               DataCell(Text(worker.birthDate)),
-              DataCell(Text(worker.employmentType == 'regular' ? '근로소득' : '사업소득')),
+              DataCell(Text(worker.employmentType == 'labor' ? '근로소득' : '사업소득')),
               DataCell(Text('${formatMoney(worker.monthlySalary)}원')),
               DataCell(
                 worker.hourlyRate == 0 && worker.monthlySalary > 0

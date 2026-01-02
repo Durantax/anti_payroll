@@ -129,12 +129,13 @@ class FileEmailService {
       horizontalAlign: HorizontalAlign.Center,
     );
     
-    // 기본 헤더 (0~16번 컬럼)
+    // 기본 헤더 (0~13번 컬럼)
     final baseHeaders = [
       '이름',
       '생년월일(YYMMDD)',
       '입사일(YYYY-MM-DD)',
       '퇴사일(YYYY-MM-DD)',
+      '근로·사업 구분',  // 신규 추가
       '월급',
       '시급',
       '주소정근로시간',
@@ -144,10 +145,6 @@ class FileEmailService {
       '휴일',
       '개근주수',
       '상여',
-      '추가수당1',
-      '추가수당2',
-      '추가공제1',
-      '추가공제2',
     ];
     
     // 동적 헤더 추가 (기본 마스터 + 거래처별 마스터)
@@ -183,13 +180,7 @@ class FileEmailService {
       cell.cellStyle = headerStyle;
     }
 
-    // 테이블 테두리 스타일
-    var tableCellStyle = CellStyle(
-      leftBorder: Border(borderStyle: BorderStyle.Thin),
-      rightBorder: Border(borderStyle: BorderStyle.Thin),
-      topBorder: Border(borderStyle: BorderStyle.Thin),
-      bottomBorder: Border(borderStyle: BorderStyle.Thin),
-    );
+    // 테이블 테두리 스타일 (Border 충돌로 인해 제거됨)
     
     // 직원 기본 정보 자동 입력 (이름, 생년월일, 입사일, 퇴사일, 월급, 시급, 주소정근로시간)
     // 정상근로시간부터는 매달 변경되므로 사용자가 직접 입력
@@ -219,33 +210,33 @@ class FileEmailService {
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
             .value = TextCellValue(worker.resignDate ?? '');
         
-        // 4: 월급 (숫자) - 수정 가능
+        // 4: 근로·사업 구분 (텍스트) - 신규
+        final employmentTypeText = (worker.employmentType ?? 'labor') == 'business' ? '사업' : '근로';
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
+            .value = TextCellValue(employmentTypeText);
+        
+        // 5: 월급 (숫자) - 수정 가능
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex))
             .value = IntCellValue(worker.monthlySalary);
         
-        // 5: 시급 (숫자) - 수정 가능
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex))
+        // 6: 시급 (숫자) - 수정 가능
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex))
             .value = IntCellValue(worker.hourlyRate);
         
-        // 6: 주소정근로시간 (숫자) - 수정 가능
+        // 7: 주소정근로시간 (숫자) - 수정 가능
         final weeklyHours = monthlyData?.weeklyHours.toInt() ?? 40;
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex))
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex))
             .value = IntCellValue(weeklyHours);
         
-        // 17: 식대 (비과세) - 기본값 0원
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 17, rowIndex: rowIndex))
+        // 14: 식대 (비과세) - 기본값 0원
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 14, rowIndex: rowIndex))
             .value = IntCellValue(0);
         
-        // 18: 자기차량운전보조금 (비과세) - 기본값 0원
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 18, rowIndex: rowIndex))
+        // 15: 자기차량운전보조금 (비과세) - 기본값 0원
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 15, rowIndex: rowIndex))
             .value = IntCellValue(0);
         
-        // 모든 컬럼에 테이블 테두리 적용 (기본 + 동적)
-        final totalColumns = allHeaders.length;
-        for (var col = 0; col < totalColumns; col++) {
-          var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIndex));
-          cell.cellStyle = tableCellStyle;
-        }
+
       }
     }
 
@@ -305,8 +296,8 @@ class FileEmailService {
         bizId = bizCell?.toString() ?? '';
       }
 
-      // 직원 데이터 읽기 (5행부터)
-      for (var rowIndex = 4; rowIndex < sheet.maxRows; rowIndex++) {
+      // 직원 데이터 읽기 (6행부터, rowIndex 5부터)
+      for (var rowIndex = 5; rowIndex < sheet.maxRows; rowIndex++) {
         final row = sheet.row(rowIndex);
         if (row.isEmpty) continue;
 
@@ -317,6 +308,9 @@ class FileEmailService {
         final birthDateRaw = row[1]?.value?.toString() ?? '';
         final birthDate = _normalizeBirthDate(birthDateRaw);
         
+        // 공란 행 제외 강화: 생년월일도 비어있으면 skip
+        if (birthDate.isEmpty) continue;
+        
         // 입사일 처리 (YYYY-MM-DD 형식으로 변환)
         final joinDateRaw = row[2]?.value?.toString() ?? '';
         final joinDate = _normalizeFullDate(joinDateRaw);
@@ -325,31 +319,42 @@ class FileEmailService {
         final resignDateRaw = row[3]?.value?.toString() ?? '';
         final resignDate = _normalizeFullDate(resignDateRaw);
         
-        final monthlySalary = int.tryParse(row[4]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
-        final hourlyRate = int.tryParse(row[5]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
-        final weeklyHours = double.tryParse(row[6]?.value?.toString() ?? '40') ?? 40;
-        final normalHours = double.tryParse(row[7]?.value?.toString() ?? '209') ?? 209;
-        final overtimeHours = double.tryParse(row[8]?.value?.toString() ?? '0') ?? 0;
-        final nightHours = double.tryParse(row[9]?.value?.toString() ?? '0') ?? 0;
-        final holidayHours = double.tryParse(row[10]?.value?.toString() ?? '0') ?? 0;
-        final weekCount = int.tryParse(row[11]?.value?.toString() ?? '4') ?? 4;
-        final bonus = int.tryParse(row[12]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
+        // 4: 근로·사업 구분 파싱
+        final employmentTypeRaw = row[4]?.value?.toString() ?? '근로';
+        final employmentType = employmentTypeRaw.contains('사업') ? 'business' : 'labor';
+        print('  [DEBUG] employmentTypeRaw: "$employmentTypeRaw" → employmentType: "$employmentType"');  // 디버깅 로그
+        
+        final monthlySalary = int.tryParse(row[5]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
+        final hourlyRate = int.tryParse(row[6]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
+        final weeklyHours = double.tryParse(row[7]?.value?.toString() ?? '40') ?? 40;
+        final normalHours = double.tryParse(row[8]?.value?.toString() ?? '209') ?? 209;
+        final overtimeHours = double.tryParse(row[9]?.value?.toString() ?? '0') ?? 0;
+        final nightHours = double.tryParse(row[10]?.value?.toString() ?? '0') ?? 0;
+        final holidayHours = double.tryParse(row[11]?.value?.toString() ?? '0') ?? 0;
+        final weekCount = int.tryParse(row[12]?.value?.toString() ?? '4') ?? 4;
+        final bonus = int.tryParse(row[13]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
         
         // 컬럼 13-16: 이전 추가수당/공제 (하위 호환성, 무시)
-        // 이제 사용하지 않지만 파싱은 유지
+        // 컬럼 14,15,16: 동적 수당/공제 (식대, 운전보조금, 거래처 마스터)
         
-        // 컬럼 17: 식대 (비과세) - additionalPay1
-        final mealAllowance = int.tryParse(row[17]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
+        // 컬럼 14: 식대 (비과세) - additionalPay1
+        final mealAllowance = row.length > 14
+            ? (int.tryParse(row[14]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0)
+            : 0;
         
-        // 컬럼 18: 자기차량운전보조금 (비과세) - additionalPay2
-        final carAllowance = int.tryParse(row[18]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
+        // 컬럼 15: 자기차량운전보조금 (비과세) - additionalPay2
+        final carAllowance = row.length > 15
+            ? (int.tryParse(row[15]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0)
+            : 0;
         
-        // 컬럼 19: 거래처별 첫 번째 마스터 (동적) - additionalPay3
-        final thirdAllowance = int.tryParse(row[19]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0;
-
+        // 컬럼 16: 거래처별 첫 번째 마스터 (동적, 옥션널) - additionalPay3
+        final thirdAllowance = row.length > 16
+            ? (int.tryParse(row[16]?.value?.toString().replaceAll(RegExp(r'[^\d]'), '') ?? '0') ?? 0)
+            : 0;
         workers.add({
           'name': name,
           'birthDate': birthDate,
+          'employmentType': employmentType,  // 신규: 근로/사업 구분
           'joinDate': joinDate,
           'resignDate': resignDate,
           'monthlySalary': monthlySalary,
@@ -361,9 +366,9 @@ class FileEmailService {
           'holidayHours': holidayHours,
           'weekCount': weekCount,
           'bonus': bonus,
-          'additionalPay1': mealAllowance,      // 식대 (컬럼 17)
-          'additionalPay2': carAllowance,       // 차량 (컬럼 18)
-          'additionalPay3': thirdAllowance,     // 거래처별 마스터 (컬럼 19)
+          'additionalPay1': mealAllowance,      // 식대 (컬럼 14)
+          'additionalPay2': carAllowance,       // 차량 (컬럼 15)
+          'additionalPay3': thirdAllowance,     // 거래처별 마스터 (컬랼 16)
           'additionalDeduct1': 0,               // 공제는 나중에 추가
           'additionalDeduct2': 0,
         });
@@ -428,7 +433,7 @@ class FileEmailService {
     for (var result in results) {
       rows.add([
         result.workerName,
-        result.employmentType == 'regular' ? '근로소득' : '사업소득',
+        result.employmentType == 'labor' ? '근로소듍' : '사업소듍',
         result.baseSalary.toString(),
         result.overtimePay.toString(),
         result.nightPay.toString(),
@@ -643,7 +648,7 @@ class FileEmailService {
         ...results.map((result) => pw.TableRow(
           children: [
             _buildCell(result.workerName, font, 7),
-            _buildCell(result.employmentType == 'regular' ? '근로' : '사업', font, 6),
+            _buildCell(result.employmentType == 'labor' ? '근로' : '사업', font, 6),
             _buildCell(formatMoney(result.baseSalary), font, 7, align: pw.TextAlign.right),
             _buildCell(result.overtimePay > 0 ? formatMoney(result.overtimePay) : '', font, 7, align: pw.TextAlign.right),
             _buildCell(result.nightPay > 0 ? formatMoney(result.nightPay) : '', font, 7, align: pw.TextAlign.right),
@@ -1304,7 +1309,7 @@ class FileEmailService {
       </div>
       <div class="info-row">
         <span class="info-label">구분</span>
-        <span class="info-value">${result.employmentType == 'regular' ? '근로소득' : '사업소득'}</span>
+        <span class="info-value">${result.employmentType == 'labor' ? '근로소듍' : '사업소듍'}</span>
       </div>
     </div>
     

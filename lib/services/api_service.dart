@@ -388,7 +388,7 @@ class ApiService {
     required int year,
     required int month,
     required Map<String, dynamic> salaryData,
-    String calculatedBy = 'app',
+    String calculatedBy = 'auto',
   }) async {
     final response = await http.post(
       Uri.parse('$_serverUrl/payroll/results/save'),
@@ -434,6 +434,29 @@ class ApiService {
 
     if (response.statusCode != 200) {
       throw Exception('급여 결과 저장 실패: ${response.statusCode}');
+    }
+  }
+
+  /// 저장된 급여 결과 조회
+  Future<Map<String, dynamic>?> getPayrollResult({
+    required int employeeId,
+    required int year,
+    required int month,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_serverUrl/payroll/results/get?employeeId=$employeeId&year=$year&month=$month'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['result'] as Map<String, dynamic>?;
+      }
+      return null;
+    } catch (e) {
+      print('급여 결과 조회 실패: $e');
+      return null;
     }
   }
 

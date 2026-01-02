@@ -75,7 +75,7 @@ class WorkerModel {
   final String? resignDate; // YYYY-MM-DD (퇴사일)
   final String phoneNumber;
   final String email;
-  final String employmentType; // 'regular' or 'freelance'
+  final String employmentType; // 'labor' (근로소득) or 'business' (사업소득)
   final String salaryType; // 'MONTHLY' or 'HOURLY'
   final int monthlySalary;
   final int hourlyRate;
